@@ -1,0 +1,72 @@
+from typing import Tuple
+
+import ipywidgets as widgets  # type: ignore[import-untyped]
+
+from .misc import list_of_lists
+from .select_base import SelectQuestion
+
+
+def MCQ(
+    descriptions: list[str],
+    options: list[str] | list[list[str]],
+    initial_vals: list[str],
+) -> Tuple[list[widgets.HTML], list[widgets.RadioButtons]]:
+    desc_width = "350px"
+
+    desc_widgets = [
+        widgets.HTML(
+            value=f"<div style='text-align: left; width: {desc_width};'><b>{desc}</b></div>"
+        )
+        for desc in descriptions
+    ]
+
+    radio_buttons = [
+        widgets.RadioButtons(
+            options=option,
+            value=value,
+            layout=widgets.Layout(width="300px"),
+        )
+        for value, option in zip(
+            initial_vals,
+            options if list_of_lists(options) else [options] * len(initial_vals),
+        )
+    ]
+
+    return desc_widgets, radio_buttons
+
+
+class MCQuestion(SelectQuestion):
+    def __init__(
+        self,
+        title="Select the option that matches the definition:",
+        style=MCQ,
+        question_number=2,
+        keys=["MC1", "MC2", "MC3", "MC4"],
+        options=[
+            ["List", "Dictionary", "Tuple", "Set"],
+            ["return", "continue", "pass", "break"],
+            ["*", "^", "**", "//"],
+            [
+                "list.add(element)",
+                "list.append(element)",
+                "list.insert(element)",
+                "list.push(element)",
+            ],
+        ],
+        descriptions=[
+            "Which of the following stores key:value pairs?",
+            "The following condition returns to the next iteration of the loop",
+            "Which operator is used for exponentiation in Python?",
+            "Which method is used to add an element to the end of a list in Python?",
+        ],
+        points=2,
+    ):
+        super().__init__(
+            title=title,
+            style=style,
+            question_number=question_number,
+            keys=keys,
+            options=options,
+            descriptions=descriptions,
+            points=points,
+        )
