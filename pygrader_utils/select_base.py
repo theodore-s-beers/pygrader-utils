@@ -1,7 +1,6 @@
 from typing import Callable, Tuple
 
-import ipywidgets as widgets  # type: ignore[import-untyped]
-from IPython.display import display
+import panel as pn
 
 from .misc import shuffle_questions
 from .telemetry import ensure_responses, update_responses
@@ -13,7 +12,7 @@ class SelectQuestion:
         title: str,
         style: Callable[
             [list[str], list, list[str]],
-            Tuple[list[widgets.HTML], list[widgets.Dropdown]],
+            Tuple[list[pn.pane.HTML], list[pn.widgets.Select]],
         ],
         question_number: int,
         keys: list[str],
@@ -43,20 +42,18 @@ class SelectQuestion:
 
         desc_widgets, self.widgets = style(descriptions, options, self.initial_vals)
 
-        self.submit_button = widgets.Button(description="Submit")
+        self.submit_button = pn.widgets.Button(name="Submit", button_type="primary")
         self.submit_button.on_click(self.submit)
 
         widget_pairs = shuffle_questions(desc_widgets, self.widgets, seed)
 
-        display(widgets.HTML(f"<h2>Question {self.question_number}: {title}</h2>"))
+        self.layout = pn.Column(
+            f"# Question {self.question_number}: {title}",
+            *(pn.Row(desc_widget, dropdown) for desc_widget, dropdown in widget_pairs),
+            self.submit_button,
+        )
 
-        # Display the widgets using HBox for alignment
-        for desc_widget, dropdown in widget_pairs:
-            display(widgets.HBox([desc_widget, dropdown]))
-
-        display(self.submit_button)
-
-    def submit(self, _):
+    def submit(self, _) -> None:
         selections = {key: widget.value for key, widget in zip(self.keys, self.widgets)}
 
         for value in selections.values():
@@ -67,3 +64,6 @@ class SelectQuestion:
             update_responses(key, value)
 
         print("Responses recorded successfully")
+
+    def show(self):
+        return self.layout

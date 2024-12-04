@@ -52,7 +52,6 @@ class StudentInfoForm:
 
         self.message = pn.pane.Str("")  # Placeholder for status message
 
-        # Layout
         self.layout = pn.Column(
             "# Student Information Form",
             self.first_name_widget,

@@ -1,6 +1,6 @@
 from typing import Tuple
 
-import ipywidgets as widgets  # type: ignore[import-untyped]
+import panel as pn
 
 from .misc import list_of_lists
 from .select_base import SelectQuestion
@@ -10,20 +10,18 @@ def MultipleChoice(
     descriptions: list[str],
     options: list[str] | list[list[str]],
     initial_vals: list[str],
-) -> Tuple[list[widgets.HTML], list[widgets.Dropdown]]:
+) -> Tuple[list[pn.pane.HTML], list[pn.widgets.Select]]:
     desc_width = "350px"
 
     desc_widgets = [
-        widgets.HTML(
-            value=f"<div style='text-align: left; width: {desc_width};'><b>{desc}</b></div>"
+        pn.pane.HTML(
+            f"<div style='text-align: left; width: {desc_width};'><b>{desc}</b></div>"
         )
         for desc in descriptions
     ]
 
     dropdowns = [
-        widgets.Dropdown(
-            options=option, value=value, layout=widgets.Layout(width="300px")
-        )
+        pn.widgets.Select(options=option, value=value, width=300)
         for value, option in zip(
             initial_vals,
             options if list_of_lists(options) else [options] * len(initial_vals),
