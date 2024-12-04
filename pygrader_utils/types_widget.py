@@ -57,12 +57,12 @@ class TypesQuestion(SelectQuestion):
             "instance",
         ],
         descriptions=[
-            "An ordered, mutable collection of items, defined with []",
-            "A file containing Python definitions and statements.",
-            "Collection of elements of the same type, which allows for efficient storage and manipulation of sequences of data",
-            "an immutable and ordered collection of elements in Python, which can contain mixed data types",
-            "A sequence of Unicode characters.",
-            "A data type that represents real numbers with a decimal point.",
+            "An ordered, mutable collection of items, defined with [ ]",
+            "A file containing Python definitions and statements",
+            "A collection of elements of the same type, allowing for efficient storage and manipulation of sequences of data",
+            "An immutable and ordered collection of elements in Python, which can contain mixed data types",
+            "A sequence of Unicode characters",
+            "A data type that represents real numbers with a decimal point",
         ],
         points=3,
     ):
