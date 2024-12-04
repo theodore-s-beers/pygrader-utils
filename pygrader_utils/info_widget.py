@@ -45,13 +45,16 @@ class StudentInfoForm:
             name="Drexel Email", value=self.drexel_email
         )
 
-        self.submit_button = pn.widgets.Button(name="Submit", button_type="primary")
+        self.submit_button = pn.widgets.Button(
+            name="Submit", button_type="primary", styles=dict(margin_top="1.5em")
+        )
         self.submit_button.on_click(self.submit)
 
-        self.message = pn.pane.Str("")  # Placeholder for messages
+        self.message = pn.pane.Str("")  # Placeholder for status message
 
         # Layout
         self.layout = pn.Column(
+            "# Student Information Form",
             self.first_name_widget,
             self.last_name_widget,
             self.drexel_id_widget,
