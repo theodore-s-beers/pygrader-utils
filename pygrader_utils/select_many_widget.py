@@ -1,4 +1,4 @@
-import ipywidgets as widgets  # type: ignore[import-untyped]
+import panel as pn
 
 from .multi_select_base import MultiSelectQuestion
 
@@ -6,40 +6,38 @@ from .multi_select_base import MultiSelectQuestion
 def MultiSelect(
     descriptions: list[str], options: list[list[str]], initial_vals: list[bool]
 ):
-    desc_widgets: list[widgets.HTML] = []
-    checkboxes: list[widgets.VBox] = []
+    desc_widgets: list[pn.pane.HTML] = []
+    checkboxes: list[pn.Column] = []
 
-    # Create a separator line between questions
-    separator = widgets.HTML(
-        value="<hr style='border:1px solid lightgray; width:100%;'>"
-    )
+    # Create separator line between questions
+    separator = pn.pane.HTML("<hr style='border:1px solid lightgray; width:100%;'>")
 
     i = 0
 
     for question, option_set in zip(descriptions, options):
         desc_width = "500px"
 
-        desc_widget = widgets.HTML(
-            value=f"<hr style='border:1px solid lightgray; width:100%;'><div style='text-align: left; width: {desc_width};'><b>{question}</b></div>"
+        # Create description widget with separator
+        desc_widget = pn.pane.HTML(
+            f"<hr style='border:1px solid lightgray; width:100%;'>"
+            f"<div style='text-align: left; width: {desc_width};'><b>{question}</b></div>"
         )
 
-        checkbox_set = []
-
-        for option in option_set:
-            checkbox_set.append(
-                widgets.Checkbox(
-                    value=initial_vals[i],
-                    description=option,
-                    disabled=False,
-                    indent=False,
-                    layout={"width": "auto", "wrap": "auto"},
-                )
+        # Create checkboxes for current question
+        checkbox_set = [
+            pn.widgets.Checkbox(
+                value=initial_vals[i],
+                name=option,
+                disabled=False,
             )
-
-            i += 1
+            for i, option in enumerate(option_set, start=i)
+        ]
 
         desc_widgets.append(desc_widget)
-        checkboxes.append(widgets.VBox([separator] + checkbox_set))
+        checkboxes.append(pn.Column(*[separator] + checkbox_set))
+
+        # Increment iterator for next question
+        i += len(option_set)
 
     return desc_widgets, checkboxes
 
