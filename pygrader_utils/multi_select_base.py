@@ -1,7 +1,6 @@
 from typing import Callable, Tuple
 
-import ipywidgets as widgets  # type: ignore[import-untyped]
-from IPython.display import display
+import panel as pn
 
 from .misc import shuffle_questions
 from .telemetry import ensure_responses, update_responses
@@ -13,7 +12,7 @@ class MultiSelectQuestion:
         title: str,
         style: Callable[
             [list[str], list[list[str]], list[bool]],
-            Tuple[list[widgets.HTML], list[widgets.VBox]],
+            Tuple[list[pn.pane.HTML], list[pn.Column]],
         ],
         question_number: int,
         keys: list[str],
@@ -51,18 +50,23 @@ class MultiSelectQuestion:
             descriptions, options, self.initial_vals
         )
 
-        self.submit_button = widgets.Button(description="Submit")
+        self.submit_button = pn.widgets.Button(name="Submit")
         self.submit_button.on_click(self.submit)
 
         widget_pairs = shuffle_questions(description_widgets, self.widgets, seed)
 
-        display(widgets.HTML(f"<h2>Question {self.question_number}: {title}</h2>"))
+        # Panel layout
+        question_header = pn.pane.HTML(
+            f"<h2>Question {self.question_number}: {title}</h2>"
+        )
+        question_body = pn.Column(
+            *[
+                pn.Row(desc_widget, checkbox_set)
+                for desc_widget, checkbox_set in widget_pairs
+            ]
+        )
 
-        # Display the widgets using HBox for alignment
-        for desc_widget, checkbox_set in widget_pairs:
-            display(widgets.HBox([desc_widget, checkbox_set]))
-
-        display(self.submit_button)
+        self.layout = pn.Column(question_header, question_body, self.submit_button)
 
     def submit(self, _) -> None:
         responses_flat: list[bool] = []
@@ -71,12 +75,12 @@ class MultiSelectQuestion:
         for row in self.widgets:
             next_selections = []
 
-            for widget in row.children:
+            for widget in row.objects:
                 # Skip HTML widgets
-                if isinstance(widget, widgets.HTML):
+                if isinstance(widget, pn.pane.HTML):
                     continue
 
-                if isinstance(widget, widgets.Checkbox):
+                if isinstance(widget, pn.widgets.Checkbox):
                     next_selections.append(widget.value)
                     responses_flat.append(widget.value)  # For flat list of responses
 
@@ -90,3 +94,6 @@ class MultiSelectQuestion:
             update_responses(key, value)
 
         print("Responses recorded successfully")
+
+    def show(self):
+        return self.layout

@@ -1,8 +1,7 @@
 import copy
 from typing import Optional
 
-import ipywidgets as widgets  # type: ignore[import-untyped]
-from IPython.display import display
+import panel as pn
 
 from .misc import shuffle_options
 from .telemetry import ensure_responses, update_responses
@@ -48,46 +47,39 @@ class ReadingPython:
         # Question title
         #
 
-        display(widgets.HTML(f"<h2>Question {question_number}: {title}</h2>"))
+        question_title = pn.pane.HTML(f"<h2>Question {question_number}: {title}</h2>")
 
         #
         # Comment dropdowns
         #
 
-        self.dropdowns_for_comments: dict[str, widgets.Dropdown] = {
-            line: widgets.Dropdown(
+        self.dropdowns_for_comments: dict[str, pn.widgets.Select] = {
+            line: pn.widgets.Select(
                 options=shuffle_options(options["comments_options"], seed),
-                description=f"Line {line}:",
-                layout=widgets.Layout(width="600px"),
+                name=f"Line {line}:",
                 value=getattr(self, f"q{question_number}_{i_comments+1}"),
+                width=600,
             )
             for i_comments, line in enumerate(options["lines_to_comment"])
         }
 
-        for dropdown in self.dropdowns_for_comments.values():
-            display(dropdown)
+        comment_dropdowns = pn.Column(*self.dropdowns_for_comments.values())
 
         #
         # Execution dropdowns
         #
 
         # Instructions
-        execution_instructions = widgets.HTML(
-            value="""
-                <h3>For each step, select the appropriate response:</h3>
-            """
+        execution_instructions = pn.pane.HTML(
+            "<h3>For each step, select the appropriate response:</h3>"
         )
 
         # Header row
-        header_row = widgets.HBox(
-            [
-                widgets.HTML(
-                    value=f"<strong>{header}</strong>",
-                    layout=widgets.Layout(width="150px"),
-                )
+        header_row = pn.Row(
+            *[
+                pn.pane.HTML(f"<strong>{header}</strong>", width=150)
                 for header in options["table_headers"]
-            ],
-            layout=widgets.Layout(display="flex", justify_content="center"),
+            ]
         )
 
         # Make a deep copy of the lines to comment and add a null value to the beginning
@@ -103,51 +95,41 @@ class ReadingPython:
         ]
 
         # Function to create a row with dropdowns
-        def create_row(step: int) -> widgets.HBox:
-            widgets_list: list[widgets.HTML | widgets.Dropdown] = []
+        def create_row(step: int) -> pn.Row:
+            widgets_list = [
+                pn.pane.HTML(f"Step {step+1}", width=150)
+                if i == 0
+                else pn.widgets.Select(
+                    options=dropdown_options[i - 1],
+                    value=getattr(
+                        self,
+                        f'q{question_number}_{len(options["lines_to_comment"])+step+1}',
+                    )[i - 1],
+                    width=150,
+                )
+                for i in range(len(options["table_headers"]))
+            ]
 
-            for i in range(len(options["table_headers"])):
-                if i == 0:
-                    # If it's the first column, create an HTML label widget with the step number
-                    widgets_list.append(
-                        widgets.HTML(
-                            value=f"Step {step+1}", layout=widgets.Layout(width="150px")
-                        )
-                    )
-                else:
-                    # If not the first column, create a Dropdown widget
-                    # Set options from dropdown_options, indexed by i-1
-                    widgets_list.append(
-                        widgets.Dropdown(
-                            layout=widgets.Layout(width="150px"),
-                            options=dropdown_options[i - 1],
-                            value=getattr(
-                                self,
-                                f'q{question_number}_{len(options["lines_to_comment"])+step+1}',
-                            )[i - 1],
-                        )
-                    )
-
-            # Return an HBox widget containing the list of widgets, horizontally aligned
-            return widgets.HBox(
-                widgets_list,
-                layout=widgets.Layout(display="flex", justify_content="center"),
-            )
+            return pn.Row(*widgets_list)
 
         # Generate rows dynamically based on n_rows
         self.rows = [create_row(step) for step in range(options["n_rows"])]
 
         # Combine header and rows
-        execution_steps = [header_row] + self.rows
-
-        # Display section 2
-        display(execution_instructions, *execution_steps)
+        execution_steps = pn.Column(header_row, *self.rows)
 
         # Submit button
-        self.submit_button = widgets.Button(description="Submit")
+        self.submit_button = pn.widgets.Button(name="Submit")
         self.submit_button.on_click(self.submit)
 
-        display(self.submit_button)
+        # Combine everything into a single layout
+        self.layout = pn.Column(
+            question_title,
+            comment_dropdowns,
+            execution_instructions,
+            execution_steps,
+            self.submit_button,
+        )
 
     def submit(self, _) -> None:
         # Get section 1 responses
@@ -162,7 +144,7 @@ class ReadingPython:
             row_value: list[Optional[str | int]] = []
 
             for box in row.children:
-                if isinstance(box, widgets.Dropdown):
+                if isinstance(box, pn.widgets.Select):
                     row_value.append(box.value)
 
             if not any(row_value):
@@ -181,3 +163,6 @@ class ReadingPython:
             update_responses(f"q{self.question_number}_{i}", exec_val)
 
         print("Responses recorded successfully")
+
+    def show(self):
+        return self.layout
