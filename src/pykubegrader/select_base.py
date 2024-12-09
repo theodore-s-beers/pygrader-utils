@@ -49,7 +49,7 @@ class SelectQuestion:
 
         self.layout = pn.Column(
             f"# Question {self.question_number}: {title}",
-            *(pn.Row(desc_widget, dropdown) for desc_widget, dropdown in widget_pairs),
+            *(pn.Column(desc_widget, pn.Row(dropdown)) for desc_widget, dropdown in widget_pairs),
             self.submit_button,
         )
 

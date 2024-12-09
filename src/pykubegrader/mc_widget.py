@@ -21,7 +21,7 @@ def MCQ(
     ]
 
     radio_buttons = [
-        pn.widgets.RadioButtonGroup(
+        pn.widgets.RadioBoxGroup(
             options=option,
             value=value,
             width=300,
