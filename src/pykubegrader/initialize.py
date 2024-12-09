@@ -1,20 +1,18 @@
 import panel as pn
 from IPython import get_ipython
 
-# Initialize Panel extension
-pn.extension()
+from .telemetry import telemetry
 
-# Import your telemetry
-try:
-    from pykubegrader.telemetry import telemetry
-except ImportError:
-    telemetry = None
-    print("Telemetry module not found. Ensure it is installed and accessible.")
-
-# Check if in a Jupyter environment and set up pre-run event
+# Check if in a Jupyter environment
 ipython = get_ipython()
-if ipython and telemetry:
+
+if ipython is not None:
+    # Initialize Panel extension
+    pn.extension()
+
+    # Register telemetry with pre_run_cell event
     ipython.events.register("pre_run_cell", telemetry)
-    print("Telemetry registered with pre_run_cell event.")
+
+    print("Setup completed successfully")
 else:
-    print("Not in a Jupyter environment or telemetry unavailable.")
+    print("Setup unsuccessful. Are you in a Jupyter environment?")
