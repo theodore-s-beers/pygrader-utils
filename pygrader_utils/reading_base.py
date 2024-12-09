@@ -143,7 +143,7 @@ class ReadingPython:
         for row in self.rows[:]:
             row_value: list[Optional[str | int]] = []
 
-            for box in row.children:
+            for box in row.objects:
                 if isinstance(box, pn.widgets.Select):
                     row_value.append(box.value)
 
