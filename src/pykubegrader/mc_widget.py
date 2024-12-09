@@ -5,7 +5,6 @@ import panel as pn
 from .misc import list_of_lists
 from .select_base import SelectQuestion
 
-
 def MCQ(
     descriptions: list[str],
     options: list[str] | list[list[str]],
