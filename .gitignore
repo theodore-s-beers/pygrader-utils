@@ -23,11 +23,11 @@ __pycache__/*
 .vscode
 tags
 
-# # Package files
-# *.egg
-# *.eggs/
-# .installed.cfg
-# *.egg-info 
+# Package files
+*.egg
+*.eggs/
+.installed.cfg
+*.egg-info 
 
 # Unittest and coverage
 htmlcov/*
@@ -41,6 +41,7 @@ coverage.xml
 # Build and docs folder/files
 build/*
 sdist/*
+dist/*
 docs/api/*
 docs/_rst/*
 docs/_build/*
