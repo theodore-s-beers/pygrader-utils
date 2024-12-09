@@ -27,7 +27,7 @@ tags
 # *.egg
 # *.eggs/
 # .installed.cfg
-# *.egg-info
+# *.egg-info 
 
 # Unittest and coverage
 htmlcov/*
