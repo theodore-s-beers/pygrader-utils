@@ -34,7 +34,7 @@ except ImportError:
     from sphinx import apidoc
 
 output_dir = os.path.join(__location__, "api")
-module_dir = os.path.join(__location__, "../src/PyKubeGrader")
+module_dir = os.path.join(__location__, "../src/pykubegrader")
 try:
     shutil.rmtree(output_dir)
 except FileNotFoundError:
@@ -101,7 +101,7 @@ copyright = "2024, jagar2"
 # If you don’t need the separation provided between version and release,
 # just set them both to the same value.
 try:
-    from PyKubeGrader import __version__ as version
+    from pykubegrader import __version__ as version
 except ImportError:
     version = ""
 
