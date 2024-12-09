@@ -8,8 +8,8 @@
 # serve to show the default.
 
 import os
-import sys
 import shutil
+import sys
 
 # -- Path setup --------------------------------------------------------------
 
@@ -34,7 +34,7 @@ except ImportError:
     from sphinx import apidoc
 
 output_dir = os.path.join(__location__, "api")
-module_dir = os.path.join(__location__, "../src/pykubegrader")
+module_dir = os.path.join(__location__, "../src/PyKubeGrader")
 try:
     shutil.rmtree(output_dir)
 except FileNotFoundError:
@@ -72,13 +72,15 @@ extensions = [
     "sphinx.ext.ifconfig",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
+    "nbsphinx",
+    "myst_nb",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
 # The suffix of source filenames.
-source_suffix = ".rst"
+source_suffix = [".rst", ".md", ".ipynb"]
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'
@@ -99,7 +101,7 @@ copyright = "2024, jagar2"
 # If you don’t need the separation provided between version and release,
 # just set them both to the same value.
 try:
-    from pykubegrader import __version__ as version
+    from PyKubeGrader import __version__ as version
 except ImportError:
     version = ""
 
@@ -153,14 +155,26 @@ todo_emit_warnings = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = "alabaster"
+html_theme = "pydata_sphinx_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
+# Material theme options (see theme.conf for more information)
 html_theme_options = {
-    "sidebar_width": "300px",
-    "page_width": "1200px"
+    "show_nav_level": 4,
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "m3-learning/PyKubeGrader",
+            "icon": "fab fa-github-square",
+            "type": "fontawesome",
+        }
+    ],
+    "logo": {
+        "image_light": "_static/Drexel_blue_Logo_square_Light.png",
+        "image_dark": "_static/Drexel_blue_Logo_square_Dark.png",
+    },
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
@@ -187,9 +201,13 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
+html_css_files = [
+    "custom.css",
+]
+
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
-# html_last_updated_fmt = '%b %d, %Y'
+html_last_updated_fmt = "%b %d, %Y"
 
 # If true, SmartyPants will be used to convert quotes and dashes to
 # typographically correct entities.
