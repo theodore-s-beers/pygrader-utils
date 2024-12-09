@@ -2,4 +2,4 @@
 
 from . import hash_seed
 
-__all__ = ['hash_seed']
+__all__ = ["hash_seed"]
