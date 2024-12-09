@@ -1,7 +1,7 @@
 import hashlib
 
 
-def hash_to_seed(input_string):
+def hash_to_seed(input_string: str) -> int:
     """
     Hash a string into a small integer seed less than 500.
 
@@ -11,7 +11,8 @@ def hash_to_seed(input_string):
     Returns:
         int: A seed value (0 <= seed < 500).
     """
-    # Ensure the input is a string
+
+    # Cast input to string, just in case
     input_string = str(input_string)
 
     # Create a SHA-256 hash of the string
