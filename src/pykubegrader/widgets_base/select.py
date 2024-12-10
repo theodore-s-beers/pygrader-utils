@@ -57,6 +57,8 @@ class SelectQuestion:
         )
 
     def submit(self, _) -> None:
+        print("Submit button clicked...")  # For debugging; remove later
+
         selections = {key: widget.value for key, widget in zip(self.keys, self.widgets)}
 
         for value in selections.values():
