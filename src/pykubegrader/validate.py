@@ -139,7 +139,7 @@ def validate_logfile(
                 return entry
         return ""
 
-    def get_len_of_entries(data, question_number) -> int:
+    def get_entries_len(data: list[str], question_number: int) -> int:
         """function to get the unique entries by length
 
         Args:
@@ -180,7 +180,7 @@ def validate_logfile(
         # Collect entries for each question in a list.
         entries = [
             entry
-            for j in range(1, get_len_of_entries(data, i))
+            for j in range(1, get_entries_len(data, i))
             if (entry := get_last_entry(data, f"q{i}_{j}")) != ""
         ]
 
@@ -246,7 +246,7 @@ def validate_logfile(
         print("Writing to results.json")
         json.dump(result_structure, file, indent=4)
 
-    login_(login_data, login_url)
+    verify_login(login_data, login_url)
 
     # The file to be uploaded. Ensure the path is correct.
     file_path = "results.json"
@@ -281,15 +281,9 @@ def validate_logfile(
     submission_message(response)
 
 
-def login_(login_data, login_url):
-    login_response = requests.post(
-        login_url, auth=HTTPBasicAuth(login_data["username"], login_data["password"])
-    )
-
-    if login_response.status_code == 200:
-        print("Login successful")
-    else:
-        Exception("Login failed")
+#
+# Helper functions
+#
 
 
 def submission_message(response) -> None:
@@ -309,3 +303,14 @@ def submission_message(response) -> None:
         pass
     else:
         print("results.json was not present")
+
+
+def verify_login(login_data, login_url):
+    login_response = requests.post(
+        login_url, auth=HTTPBasicAuth(login_data["username"], login_data["password"])
+    )
+
+    if login_response.status_code == 200:
+        print("Login successful")
+    else:
+        Exception("Login failed")
