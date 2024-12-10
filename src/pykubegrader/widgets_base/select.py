@@ -2,8 +2,8 @@ from typing import Callable, Tuple
 
 import panel as pn
 
-from ..misc import shuffle_questions
 from ..telemetry import ensure_responses, update_responses
+from ..utils import shuffle_questions
 
 
 class SelectQuestion:

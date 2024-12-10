@@ -3,8 +3,8 @@ from typing import Optional
 
 import panel as pn
 
-from ..misc import shuffle_options
 from ..telemetry import ensure_responses, update_responses
+from ..utils import shuffle_options
 
 
 class ReadingPython:
