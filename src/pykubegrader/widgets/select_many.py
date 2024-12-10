@@ -1,6 +1,10 @@
 import panel as pn
 
-from .multi_select_base import MultiSelectQuestion
+from ..widgets_base.multi_select import MultiSelectQuestion
+
+#
+# Style function
+#
 
 
 def MultiSelect(
@@ -40,6 +44,11 @@ def MultiSelect(
         i += len(option_set)
 
     return desc_widgets, checkboxes
+
+
+#
+# Question class
+#
 
 
 class SelectMany(MultiSelectQuestion):

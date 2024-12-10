@@ -5,7 +5,11 @@ import socket
 import numpy as np
 import panel as pn
 
-from .telemetry import ensure_responses, update_responses
+from ..telemetry import ensure_responses, update_responses
+
+#
+# Constants
+#
 
 EMAIL_PATTERN = re.compile(r"[a-z]+\d+@drexel\.edu")
 
@@ -19,6 +23,10 @@ KEYS = [
     "jupyter_user",
     "seed",
 ]
+
+#
+# Form class
+#
 
 
 class StudentInfoForm:

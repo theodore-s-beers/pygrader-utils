@@ -2,8 +2,12 @@ from typing import Tuple
 
 import panel as pn
 
-from .misc import list_of_lists
-from .select_base import SelectQuestion
+from ..misc import list_of_lists
+from ..widgets_base.select import SelectQuestion
+
+#
+# Style function
+#
 
 
 def MCQ(
@@ -33,6 +37,11 @@ def MCQ(
     ]
 
     return desc_widgets, radio_buttons
+
+
+#
+# Question class
+#
 
 
 class MCQuestion(SelectQuestion):

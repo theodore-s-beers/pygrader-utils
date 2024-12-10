@@ -2,8 +2,12 @@ from typing import Tuple
 
 import panel as pn
 
-from .misc import list_of_lists
-from .select_base import SelectQuestion
+from ..misc import list_of_lists
+from ..widgets_base.select import SelectQuestion
+
+#
+# Style function
+#
 
 
 def MultipleChoice(
@@ -29,6 +33,11 @@ def MultipleChoice(
     ]
 
     return desc_widgets, dropdowns
+
+
+#
+# Question class
+#
 
 
 class TypesQuestion(SelectQuestion):

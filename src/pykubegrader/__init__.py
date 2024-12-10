@@ -1,8 +1,7 @@
 from importlib.metadata import PackageNotFoundError, version  # pragma: no cover
 
 try:
-    # Change here if project is renamed and does not equal the package name
-    dist_name = "PyKubeGrader"
+    dist_name = "PyKubeGrader"  # Change if project is renamed
     __version__ = version(dist_name)
 except PackageNotFoundError:  # pragma: no cover
     __version__ = "unknown"

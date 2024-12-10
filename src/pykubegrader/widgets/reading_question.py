@@ -1,4 +1,4 @@
-from .reading_base import ReadingPython
+from ..widgets_base.reading import ReadingPython
 
 
 class ReadingPythonQuestion(ReadingPython):
