@@ -10,12 +10,12 @@ from IPython.core.interactiveshell import ExecutionInfo
 from requests import Response
 from requests.auth import HTTPBasicAuth
 
+# Set logging config (`force` is important)
 logging.basicConfig(filename=".output.log", level=logging.INFO, force=True)
 
-
-def telemetry(info: ExecutionInfo) -> None:
-    cell_content = info.raw_cell
-    log_encrypted(f"code run: {cell_content}")
+#
+# Local functions
+#
 
 
 def encrypt_to_b64(message: str) -> str:
@@ -34,17 +34,6 @@ def encrypt_to_b64(message: str) -> str:
     return encrypted_b64
 
 
-def log_encrypted(message: str) -> None:
-    encrypted_b64 = encrypt_to_b64(message)
-    logging.info(f"Encrypted Output: {encrypted_b64}")
-
-
-def log_variable(value, info_type) -> None:
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    message = f"{info_type}, {value}, {timestamp}"
-    log_encrypted(message)
-
-
 def ensure_responses() -> dict:
     with open(".responses.json", "a") as _:
         pass
@@ -59,6 +48,22 @@ def ensure_responses() -> dict:
             json.dump(data, f)
 
     return data
+
+
+def log_encrypted(message: str) -> None:
+    encrypted_b64 = encrypt_to_b64(message)
+    logging.info(f"Encrypted Output: {encrypted_b64}")
+
+
+def log_variable(value, info_type) -> None:
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    message = f"{info_type}, {value}, {timestamp}"
+    log_encrypted(message)
+
+
+def telemetry(info: ExecutionInfo) -> None:
+    cell_content = info.raw_cell
+    log_encrypted(f"code run: {cell_content}")
 
 
 def update_responses(key: str, value) -> dict:
@@ -82,6 +87,11 @@ def update_responses(key: str, value) -> dict:
         raise
 
     return data
+
+
+#
+# API request functions
+#
 
 
 def score_question(
