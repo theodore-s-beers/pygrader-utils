@@ -5,53 +5,97 @@ import subprocess
 import sys
 import argparse
 
-
 def process_notebooks(root_folder):
     """
     Recursively checks all files in a folder for Jupyter notebooks containing a specific cell content.
-    Moves matching notebooks to a new folder structure and runs `otter assign`.
+    Moves matching notebooks to a new folder structure and processes them using `otter assign`.
+
+    Args:
+        root_folder (str): The path to the root folder where the script will search for Jupyter notebooks.
+
+    The function performs the following steps:
+    1. Creates a `_solutions` folder within the `root_folder`.
+    2. Searches all subdirectories of `root_folder` for Jupyter notebooks (`*.ipynb` files).
+    3. Identifies notebooks with specific content by calling `has_assignment_config`.
+    4. Moves the identified notebooks to corresponding subfolders within `_solutions`.
+    5. Runs the `otter assign` command to generate student versions of the notebooks.
+    6. Cleans up the generated student notebooks and copies them back to the root folder.
+
+    Example:
+        Suppose you have the following directory structure:
+        ```
+        root_folder/
+        ├── lesson1/
+        │   ├── example.ipynb
+        └── lesson2/
+            ├── another_example.ipynb
+        ```
+        If `example.ipynb` and `another_example.ipynb` contain the target content,
+        after running `process_notebooks(root_folder)`, the structure will become:
+        ```
+        root_folder/
+        ├── _solutions/
+        │   ├── example/
+        │   │   ├── example.ipynb
+        │   │   ├── dist/
+        │   │       ├── student/
+        │   │           ├── example.ipynb
+        │   ├── another_example/
+        │       ├── another_example.ipynb
+        │       ├── dist/
+        │           ├── student/
+        │               ├── another_example.ipynb
+        ├── example.ipynb
+        ├── another_example.ipynb
+        ```
+
+    Note:
+        The function relies on external utility functions like `has_assignment_config`, 
+        `run_otter_assign`, and `clean_notebook` to perform specific tasks.
     """
-    # Define target subfolder
+    # Define the folder to store solutions
     solutions_folder = os.path.join(root_folder, "_solutions")
     os.makedirs(solutions_folder, exist_ok=True)
 
     for dirpath, _, filenames in os.walk(root_folder):
+        # Iterate over all files in the directory
         for filename in filenames:
+            # Process only Jupyter notebook files
             if filename.endswith(".ipynb"):
                 notebook_path = os.path.join(dirpath, filename)
 
-                # Check if the notebook has the target content
+                # Check if the notebook contains the target configuration
                 if has_assignment_config(notebook_path):
-                    # Create subfolder for the notebook in `_solutions`
+                    # Define the subfolder for the notebook in `_solutions`
                     notebook_name = os.path.splitext(filename)[0]
                     notebook_subfolder = os.path.join(solutions_folder, notebook_name)
                     os.makedirs(notebook_subfolder, exist_ok=True)
 
-                    # Move the notebook to the new subfolder
+                    # Move the notebook to the designated subfolder
                     new_notebook_path = os.path.join(notebook_subfolder, filename)
-                    if os.path.abspath(notebook_path) != os.path.abspath(
-                        new_notebook_path
-                    ):
+                    if os.path.abspath(notebook_path) != os.path.abspath(new_notebook_path):
                         shutil.move(notebook_path, new_notebook_path)
                         print(f"Moved: {notebook_path} -> {new_notebook_path}")
                     else:
                         print(f"Notebook already in destination: {new_notebook_path}")
 
-                    # Run `otter assign` on the notebook
+                    # Execute the `otter assign` command to generate the student version
                     run_otter_assign(
                         new_notebook_path, os.path.join(notebook_subfolder, "dist")
                     )
 
+                    # Path to the student notebook
                     student_notebook = os.path.join(
                         notebook_subfolder, "dist", "student", notebook_name + ".ipynb"
                     )
 
+                    # Clean the student notebook
                     clean_notebook(student_notebook)
 
+                    # Copy the cleaned student notebook back to the root folder
                     shutil.copy(student_notebook, root_folder)
-                    print(
-                        f"Copied and cleaned student notebook: {student_notebook} -> {root_folder}"
-                    )
+                    print(f"Copied and cleaned student notebook: {student_notebook} -> {root_folder}")
+
 
 
 def clean_notebook(notebook_path):
