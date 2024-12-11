@@ -29,7 +29,7 @@ class NotebookProcessor:
         4. Processes notebooks that meet the criteria using `otter assign` or other defined steps.
 
         Prerequisites:
-            - The `has_assignment_config` method should be implemented to check if a notebook
+            - The `has_otter_assign` method should be implemented to check if a notebook
             contains the required configuration for assignment processing.
             - The `_process_single_notebook` method should handle the specific processing
             of a single notebook, including moving it to a new folder or running
@@ -43,7 +43,7 @@ class NotebookProcessor:
                 def __init__(self, root_folder):
                     self.root_folder = root_folder
 
-                def has_assignment_config(self, notebook_path):
+                def has_otter_assign(self, notebook_path):
                     # Implementation to check for assignment configuration
                     return True  # Replace with actual check logic
 
@@ -62,7 +62,7 @@ class NotebookProcessor:
                     notebook_path = os.path.join(dirpath, filename)
 
                     # Check if the notebook has the required assignment configuration
-                    if self.has_assignment_config(notebook_path):
+                    if self.has_otter_assign(notebook_path):
                         # Process the notebook if it meets the criteria
                         self._process_single_notebook(notebook_path)
 
@@ -87,11 +87,48 @@ class NotebookProcessor:
         print(f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}")
 
     @staticmethod
-    def has_assignment_config(notebook_path):
+    def has_otter_assign(notebook_path, *tags):
         """
-        Checks if a Jupyter notebook contains a specific configuration cell.
+        Determines if a Jupyter notebook contains any of the specified configuration tags.
+
+        This method checks for the presence of specific content in a Jupyter notebook
+        to identify whether it includes any of the required headings or tags.
+
+        Args:
+            notebook_path (str): The file path to the Jupyter notebook to be checked.
+            *tags (str): Variable-length argument list of tags to search for.
+                        Defaults to ("# ASSIGNMENT CONFIG",).
+
+        Returns:
+            bool: True if the notebook contains any of the specified tags, False otherwise.
+
+        Dependencies:
+            - The `check_for_heading` function must be implemented. It should search
+            for specific headings or content in a notebook file and return a boolean
+            value indicating if any of the tags exist.
+
+        Example:
+            def check_for_heading(notebook_path, keywords):
+                # Mock implementation of content check
+                with open(notebook_path, 'r') as file:
+                    content = file.read()
+                return any(keyword in content for keyword in keywords)
+
+            notebook_path = "path/to/notebook.ipynb"
+            # Check for default tags
+            contains_config = has_otter_assign(notebook_path)
+            print(f"Contains assignment config: {contains_config}")
+
+            # Check for custom tags
+            contains_custom = has_otter_assign(notebook_path, "# CUSTOM CONFIG", "# ANOTHER CONFIG")
+            print(f"Contains custom config: {contains_custom}")
         """
-        return check_for_heading(notebook_path, ["# ASSIGNMENT CONFIG"])
+        # Default tags if none are provided
+        if not tags:
+            tags = ("# ASSIGNMENT CONFIG",)
+
+        # Use the helper function to check for the presence of any specified tag
+        return check_for_heading(notebook_path, tags)
 
     @staticmethod
     def run_otter_assign(notebook_path, dist_folder):
