@@ -65,17 +65,24 @@ class NotebookProcessor:
             processor = NotebookProcessor("/path/to/root/folder")
             processor.process_notebooks()
         """
+        ipynb_files = []
+        
         # Walk through the root folder and its subfolders
         for dirpath, _, filenames in os.walk(self.root_folder):
             for filename in filenames:
                 # Check if the file is a Jupyter notebook
                 if filename.endswith(".ipynb"):
                     notebook_path = os.path.join(dirpath, filename)
-
-                    # Check if the notebook has the required assignment configuration
-                    if self.has_assignment(notebook_path):
-                        # Process the notebook if it meets the criteria
-                        self._process_single_notebook(notebook_path)
+                    ipynb_files.append(notebook_path)
+        
+        for notebook_path in ipynb_files:
+            # Check if the notebook has the required assignment configuration
+            if self.has_assignment(notebook_path):
+                
+                print(f"notebook_path = {notebook_path}")
+                
+                # Process the notebook if it meets the criteria
+                self._process_single_notebook(notebook_path)
                         
     def _print_and_log(self, message):
         """
@@ -146,7 +153,7 @@ class NotebookProcessor:
         """
         # Default tags if none are provided
         if not tags:
-            tags = ("# ASSIGNMENT CONFIG","# BEGIN MULTIPLE CHOICE")
+            tags = ["# ASSIGNMENT CONFIG"]
 
         # Use the helper function to check for the presence of any specified tag
         return check_for_heading(notebook_path, tags)
@@ -176,13 +183,13 @@ class NotebookProcessor:
 
 def check_for_heading(notebook_path, search_strings):
     """
-    Checks if a Jupyter notebook contains a cell whose source matches any of the given strings.
+    Checks if a Jupyter notebook contains a heading cell whose source matches any of the given strings.
     """
     try:
         with open(notebook_path, "r", encoding="utf-8") as f:
             notebook = nbformat.read(f, as_version=4)
             for cell in notebook.cells:
-                if cell.cell_type in {"code", "markdown", "raw"}:
+                if cell.cell_type == "raw" and cell.source.startswith("#"):
                     if any(search_string in cell.source for search_string in search_strings):
                         return True
     except Exception as e:
