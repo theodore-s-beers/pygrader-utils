@@ -16,18 +16,56 @@ class NotebookProcessor:
         self.solutions_folder = os.path.join(self.root_folder, "_solutions")
         os.makedirs(self.solutions_folder, exist_ok=True)
 
+    import os
+
     def process_notebooks(self):
         """
-        Recursively checks all files in a folder for Jupyter notebooks containing a specific cell content.
-        Moves matching notebooks to a new folder structure and processes them using `otter assign`.
+        Recursively processes Jupyter notebooks in a given folder and its subfolders.
+
+        The function performs the following steps:
+        1. Iterates through all files within the root folder and subfolders.
+        2. Identifies Jupyter notebooks by checking file extensions (.ipynb).
+        3. Checks if each notebook contains assignment configuration metadata.
+        4. Processes notebooks that meet the criteria using `otter assign` or other defined steps.
+
+        Prerequisites:
+            - The `has_assignment_config` method should be implemented to check if a notebook
+            contains the required configuration for assignment processing.
+            - The `_process_single_notebook` method should handle the specific processing
+            of a single notebook, including moving it to a new folder or running
+            additional tools like `otter assign`.
+
+        Raises:
+            - OSError: If an issue occurs while accessing files or directories.
+
+        Example:
+            class NotebookProcessor:
+                def __init__(self, root_folder):
+                    self.root_folder = root_folder
+
+                def has_assignment_config(self, notebook_path):
+                    # Implementation to check for assignment configuration
+                    return True  # Replace with actual check logic
+
+                def _process_single_notebook(self, notebook_path):
+                    # Implementation to process a single notebook
+                    print(f"Processing notebook: {notebook_path}")
+
+            processor = NotebookProcessor("/path/to/root/folder")
+            processor.process_notebooks()
         """
+        # Walk through the root folder and its subfolders
         for dirpath, _, filenames in os.walk(self.root_folder):
             for filename in filenames:
+                # Check if the file is a Jupyter notebook
                 if filename.endswith(".ipynb"):
                     notebook_path = os.path.join(dirpath, filename)
 
+                    # Check if the notebook has the required assignment configuration
                     if self.has_assignment_config(notebook_path):
+                        # Process the notebook if it meets the criteria
                         self._process_single_notebook(notebook_path)
+
 
     def _process_single_notebook(self, notebook_path):
         notebook_name = os.path.splitext(os.path.basename(notebook_path))[0]
