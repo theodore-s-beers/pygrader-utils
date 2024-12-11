@@ -104,16 +104,24 @@ class NotebookProcessor:
         os.makedirs(notebook_subfolder, exist_ok=True)
 
         new_notebook_path = os.path.join(notebook_subfolder, os.path.basename(notebook_path))
+        
+        # makes a temp copy of the notebook
+        temp_notebook_path = os.path.join(notebook_subfolder, f"{notebook_name}_temp.ipynb")
+        shutil.copy(notebook_path, temp_notebook_path)
+        
         if os.path.abspath(notebook_path) != os.path.abspath(new_notebook_path):
             shutil.move(notebook_path, new_notebook_path)
             self._print_and_log(f"Moved: {notebook_path} -> {new_notebook_path}")
         else:
             self._print_and_log(f"Notebook already in destination: {new_notebook_path}")
             
-
+        if self.has_assignment(temp_notebook_path, '# BEGIN MULTIPLE CHOICE'):
+            self._print_and_log(f"Notebook {temp_notebook_path} has multiple choice questions")
+            Warning("Not implemented yet")
+            
         
-        if self.has_assignment(new_notebook_path, "# ASSIGNMENT CONFIG"):
-            self.run_otter_assign(new_notebook_path, os.path.join(notebook_subfolder, "dist"))
+        if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
+            self.run_otter_assign(temp_notebook_path, os.path.join(notebook_subfolder, "dist"))
 
             student_notebook = os.path.join(notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb")
             self.clean_notebook(student_notebook)
@@ -174,11 +182,26 @@ class NotebookProcessor:
             command = ["otter", "assign", notebook_path, dist_folder]
             subprocess.run(command, check=True)
             print(f"Otter assign completed: {notebook_path} -> {dist_folder}")
+            
+            # Remove all postfix _test from filenames in dist_folder
+            NotebookProcessor.remove_test_postfix(dist_folder)
+            
         except subprocess.CalledProcessError as e:
             print(f"Error running `otter assign` for {notebook_path}: {e}")
         except Exception as e:
             print(f"Unexpected error during `otter assign` for {notebook_path}: {e}")
 
+    @staticmethod
+    def remove_test_postfix(dist_folder, suffix="_temp"):
+        logging.info(f"Removing postfix '{suffix}' from filenames in {dist_folder}")
+        for root, _, files in os.walk(dist_folder):
+            for file in files:
+                if suffix in file:
+                    old_file_path = os.path.join(root, file)
+                    new_file_path = os.path.join(root, file.replace(suffix, ""))
+                    os.rename(old_file_path, new_file_path)
+                    logging.info(f"Renamed: {old_file_path} -> {new_file_path}")
+    
     @staticmethod
     def clean_notebook(notebook_path):
         """
