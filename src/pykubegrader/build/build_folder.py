@@ -29,7 +29,7 @@ class NotebookProcessor:
         4. Processes notebooks that meet the criteria using `otter assign` or other defined steps.
 
         Prerequisites:
-            - The `has_otter_assign` method should be implemented to check if a notebook
+            - The `has_assignment` method should be implemented to check if a notebook
             contains the required configuration for assignment processing.
             - The `_process_single_notebook` method should handle the specific processing
             of a single notebook, including moving it to a new folder or running
@@ -43,7 +43,7 @@ class NotebookProcessor:
                 def __init__(self, root_folder):
                     self.root_folder = root_folder
 
-                def has_otter_assign(self, notebook_path):
+                def has_assignment(self, notebook_path):
                     # Implementation to check for assignment configuration
                     return True  # Replace with actual check logic
 
@@ -62,7 +62,7 @@ class NotebookProcessor:
                     notebook_path = os.path.join(dirpath, filename)
 
                     # Check if the notebook has the required assignment configuration
-                    if self.has_otter_assign(notebook_path):
+                    if self.has_assignment(notebook_path):
                         # Process the notebook if it meets the criteria
                         self._process_single_notebook(notebook_path)
 
@@ -87,7 +87,7 @@ class NotebookProcessor:
         print(f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}")
 
     @staticmethod
-    def has_otter_assign(notebook_path, *tags):
+    def has_assignment(notebook_path, *tags):
         """
         Determines if a Jupyter notebook contains any of the specified configuration tags.
 
@@ -116,11 +116,11 @@ class NotebookProcessor:
 
             notebook_path = "path/to/notebook.ipynb"
             # Check for default tags
-            contains_config = has_otter_assign(notebook_path)
+            contains_config = has_assignment(notebook_path)
             print(f"Contains assignment config: {contains_config}")
 
             # Check for custom tags
-            contains_custom = has_otter_assign(notebook_path, "# CUSTOM CONFIG", "# ANOTHER CONFIG")
+            contains_custom = has_assignment(notebook_path, "# CUSTOM CONFIG", "# ANOTHER CONFIG")
             print(f"Contains custom config: {contains_custom}")
         """
         # Default tags if none are provided
