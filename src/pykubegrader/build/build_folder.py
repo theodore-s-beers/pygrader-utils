@@ -127,6 +127,9 @@ class NotebookProcessor:
             self.clean_notebook(student_notebook)
             shutil.copy(student_notebook, self.root_folder)
             print(f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}")
+        
+        # Remove the temp copy of the notebook
+        os.remove(temp_notebook_path)
 
     @staticmethod
     def has_assignment(notebook_path, *tags):
