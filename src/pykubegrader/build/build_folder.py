@@ -5,18 +5,29 @@ import nbformat
 import subprocess
 import sys
 import argparse
+import logging
 
 @dataclass
 class NotebookProcessor:
     root_folder: str
     solutions_folder: str = field(init=False)
+    verbose: bool = False
+    log: bool = True
 
     def __post_init__(self):
         # Define the folder to store solutions
         self.solutions_folder = os.path.join(self.root_folder, "_solutions")
         os.makedirs(self.solutions_folder, exist_ok=True)
+        
+        # Configure logging
+        log_file_path = os.path.join(self.solutions_folder, "notebook_processor.log")
+        logging.basicConfig(
+            filename=log_file_path,  # Name of the log file
+            level=logging.INFO,  # Logging level
+            format="%(asctime)s - %(levelname)s - %(message)s"  # Log format
+        )
 
-    import os
+        self.logger = logging.getLogger(__name__)  # Get a logger instance
 
     def process_notebooks(self):
         """
@@ -65,6 +76,16 @@ class NotebookProcessor:
                     if self.has_assignment(notebook_path):
                         # Process the notebook if it meets the criteria
                         self._process_single_notebook(notebook_path)
+                        
+    def _print_and_log(self, message):
+        """
+        Print a message and log it to the logger.
+        """
+        if self.verbose:
+            print(message)
+        
+        if self.log:    
+            self.logger.info(message)
 
 
     def _process_single_notebook(self, notebook_path):
@@ -75,9 +96,9 @@ class NotebookProcessor:
         new_notebook_path = os.path.join(notebook_subfolder, os.path.basename(notebook_path))
         if os.path.abspath(notebook_path) != os.path.abspath(new_notebook_path):
             shutil.move(notebook_path, new_notebook_path)
-            print(f"Moved: {notebook_path} -> {new_notebook_path}")
+            self._print_and_log(f"Moved: {notebook_path} -> {new_notebook_path}")
         else:
-            print(f"Notebook already in destination: {new_notebook_path}")
+            self._print_and_log(f"Notebook already in destination: {new_notebook_path}")
 
         self.run_otter_assign(new_notebook_path, os.path.join(notebook_subfolder, "dist"))
 
@@ -125,7 +146,7 @@ class NotebookProcessor:
         """
         # Default tags if none are provided
         if not tags:
-            tags = ("# ASSIGNMENT CONFIG",)
+            tags = ("# ASSIGNMENT CONFIG","# BEGIN MULTIPLE CHOICE")
 
         # Use the helper function to check for the presence of any specified tag
         return check_for_heading(notebook_path, tags)
