@@ -76,6 +76,7 @@ class NotebookProcessor:
                     ipynb_files.append(notebook_path)
         
         for notebook_path in ipynb_files:
+            
             # Check if the notebook has the required assignment configuration
             if self.has_assignment(notebook_path):
                 
@@ -96,6 +97,8 @@ class NotebookProcessor:
 
 
     def _process_single_notebook(self, notebook_path):
+        
+        logging.info(f"Processing notebook: {notebook_path}")
         notebook_name = os.path.splitext(os.path.basename(notebook_path))[0]
         notebook_subfolder = os.path.join(self.solutions_folder, notebook_name)
         os.makedirs(notebook_subfolder, exist_ok=True)
@@ -106,13 +109,16 @@ class NotebookProcessor:
             self._print_and_log(f"Moved: {notebook_path} -> {new_notebook_path}")
         else:
             self._print_and_log(f"Notebook already in destination: {new_notebook_path}")
+            
 
-        self.run_otter_assign(new_notebook_path, os.path.join(notebook_subfolder, "dist"))
+        
+        if self.has_assignment(new_notebook_path, "# ASSIGNMENT CONFIG"):
+            self.run_otter_assign(new_notebook_path, os.path.join(notebook_subfolder, "dist"))
 
-        student_notebook = os.path.join(notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb")
-        self.clean_notebook(student_notebook)
-        shutil.copy(student_notebook, self.root_folder)
-        print(f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}")
+            student_notebook = os.path.join(notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb")
+            self.clean_notebook(student_notebook)
+            shutil.copy(student_notebook, self.root_folder)
+            print(f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}")
 
     @staticmethod
     def has_assignment(notebook_path, *tags):
