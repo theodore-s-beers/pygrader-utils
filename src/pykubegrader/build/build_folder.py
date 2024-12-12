@@ -62,7 +62,7 @@ class NotebookProcessor:
 
                 def _process_single_notebook(self, notebook_path):
                     # Implementation to process a single notebook
-                    _print_and_log(f"Processing notebook: {notebook_path}")
+                    self._print_and_log(f"Processing notebook: {notebook_path}")
 
             processor = NotebookProcessor("/path/to/root/folder")
             processor.process_notebooks()
@@ -82,7 +82,7 @@ class NotebookProcessor:
             # Check if the notebook has the required assignment configuration
             if self.has_assignment(notebook_path):
                 
-                _print_and_log(f"notebook_path = {notebook_path}")
+                self._print_and_log(f"notebook_path = {notebook_path}")
                 
                 # Process the notebook if it meets the criteria
                 self._process_single_notebook(notebook_path)
@@ -128,7 +128,7 @@ class NotebookProcessor:
             student_notebook = os.path.join(notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb")
             self.clean_notebook(student_notebook)
             shutil.copy(student_notebook, self.root_folder)
-            _print_and_log(f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}")
+            self._print_and_log(f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}")
         
         # Remove the temp copy of the notebook
         os.remove(temp_notebook_path)
@@ -164,11 +164,11 @@ class NotebookProcessor:
             notebook_path = "path/to/notebook.ipynb"
             # Check for default tags
             contains_config = has_assignment(notebook_path)
-            _print_and_log(f"Contains assignment config: {contains_config}")
+            self._print_and_log(f"Contains assignment config: {contains_config}")
 
             # Check for custom tags
             contains_custom = has_assignment(notebook_path, "# CUSTOM CONFIG", "# ANOTHER CONFIG")
-            _print_and_log(f"Contains custom config: {contains_custom}")
+            self._print_and_log(f"Contains custom config: {contains_custom}")
         """
         # Default tags if none are provided
         if not tags:
