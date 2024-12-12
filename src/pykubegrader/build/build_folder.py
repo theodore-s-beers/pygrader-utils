@@ -137,6 +137,8 @@ class NotebookProcessor:
             solution_path = f"{new_notebook_path.strip('.ipynb')}_solutions.py"
             
             for data_key, data_value in data.items():
+                
+                data_ = {data_key: data_value}
             
                 # Extract the first raw cells
                 raw = extract_raw_cells(temp_notebook_path)
@@ -144,12 +146,12 @@ class NotebookProcessor:
                 # Generate the solution file
                 self.generate_solution_MCQ(raw, data, output_file=solution_path)
             
-            question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
-            generate_mcq_file(raw, data, output_file=question_path)
+                question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
+                generate_mcq_file(raw, data_, output_file=question_path)
             
-            markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
-            
-            replace_cells_between_markers(raw, data, markers, temp_notebook_path, temp_notebook_path)
+                markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
+                
+                replace_cells_between_markers(raw, data, markers, temp_notebook_path, temp_notebook_path)
             
         if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
             self.run_otter_assign(temp_notebook_path, os.path.join(notebook_subfolder, "dist"))
@@ -742,7 +744,7 @@ def generate_mcq_file(raw, data_dict, output_file="mc_questions.py"):
         f.write("        super().__init__(\n")
         f.write('            title="Select the Best Answer:",\n')
         f.write("            style=MCQ,\n")
-        f.write("            question_number=1,\n")
+        f.write(f"            question_number={raw['question number']},\n")
 
         # Write keys
         keys = [
