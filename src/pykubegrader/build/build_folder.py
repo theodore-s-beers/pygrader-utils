@@ -147,21 +147,7 @@ class NotebookProcessor:
             
             markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
             
-            replacement_cells = [
-                                {
-                                    "cell_type": "code",
-                                    "metadata": {},
-                                    "source": [
-                                        "# Run this block of code by pressing Shift + Enter to display the question\n",
-                                        "from mc_questions import Question1\n",
-                                        "Question1().show()\n"
-                                    ],
-                                    "outputs": [],
-                                    "execution_count": None
-                                }
-                            ]
-            
-            replace_cells_between_markers(markers, replacement_cells, temp_notebook_path, temp_notebook_path)
+            replace_cells_between_markers(raw, data, markers, temp_notebook_path, temp_notebook_path)
             
         if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
             self.run_otter_assign(temp_notebook_path, os.path.join(notebook_subfolder, "dist"))
@@ -588,7 +574,7 @@ def clean_notebook(notebook_path):
     except Exception as e:
         logger.info(f"Error cleaning notebook {notebook_path}: {e}")
         
-def parse_raw(raw_list):
+def _get_first_heading(raw_list, heading="# BEGIN MULTIPLE CHOICE"):
     """
     Converts a list of raw strings into key-value pairs for multiple-choice metadata.
 
@@ -601,16 +587,15 @@ def parse_raw(raw_list):
     metadata = {}
 
     for line in raw_list:
-        # Check if line contains # BEGIN MULTIPLE CHOICE
-        if line.startswith("# BEGIN MULTIPLE CHOICE"):
+        # Check if line contains heading
+        if line.startswith(heading):
             lines = line.split("\n")
             for item in lines:
                 if item.startswith("##"):
                     # Extract key and value from lines
                     key, value = item[3:].split(":", 1)
                     metadata[key.strip()] = value.strip()
-
-    return metadata
+            return metadata
 
 def ensure_imports(output_file, header_lines):
         """
@@ -642,10 +627,10 @@ def ensure_imports(output_file, header_lines):
     
 import json
 
-def replace_cells_between_markers(markers, replacement_cells, ipynb_file, output_file):
+def replace_cells_between_markers(raw, data, markers, ipynb_file, output_file):
     """
-    Replaces cells between specified markers in a Jupyter Notebook (.ipynb file)
-    with provided replacement cells.
+    Replaces the top-most cells between specified markers in a Jupyter Notebook (.ipynb file)
+    with provided replacement cells and returns immediately after the replacement.
 
     Parameters:
     markers (tuple): A tuple containing two strings: the BEGIN and END markers.
@@ -657,41 +642,60 @@ def replace_cells_between_markers(markers, replacement_cells, ipynb_file, output
     None: Writes the modified notebook to the output file.
     """
     begin_marker, end_marker = markers
+    
+    
+    for key, value in raw.items():
+        
+        replacement_cells = [
+                        {
+                            "cell_type": "code",
+                            "metadata": {},
+                            "source": [
+                                "# Run this block of code by pressing Shift + Enter to display the question\n",
+                                f"from .questions.{output_file.strip("_temp.ipynb")} import Question{raw}\n",
+                                "Question1().show()\n"
+                            ],
+                            "outputs": [],
+                            "execution_count": None
+                        }
+                    ]
 
-    # Load the notebook data
-    with open(ipynb_file, 'r', encoding='utf-8') as f:
-        notebook_data = json.load(f)
+        # Load the notebook data
+        with open(ipynb_file, 'r', encoding='utf-8') as f:
+            notebook_data = json.load(f)
 
-    new_cells = []
-    inside_markers = False
+        new_cells = []
+        inside_markers = False
+        replaced = False
 
-    for cell in notebook_data['cells']:
-        if cell['cell_type'] == 'raw':
-            # Check for BEGIN marker
-            if any(begin_marker in line for line in cell.get('source', [])):
-                inside_markers = True
-                # Add the replacement cells
-                new_cells.extend(replacement_cells)
+        for cell in notebook_data['cells']:
+            if cell['cell_type'] == 'raw' and not replaced:
+                # Check for BEGIN marker
+                if any(begin_marker in line for line in cell.get('source', [])):
+                    inside_markers = True
+                    # Add the replacement cells
+                    new_cells.extend(replacement_cells)
+                    replaced = True  # Ensure we only replace the first occurrence
+                    continue
+
+                # Check for END marker
+                if any(end_marker in line for line in cell.get('source', [])):
+                    inside_markers = False
+                    continue
+
+            # Skip cells within the marked block
+            if inside_markers:
                 continue
 
-            # Check for END marker
-            if any(end_marker in line for line in cell.get('source', [])):
-                inside_markers = False
-                continue
+            # Add non-marked cells as is
+            new_cells.append(cell)
 
-        # Skip cells within the marked block
-        if inside_markers:
+        # If the replacement happened, update the notebook and continue
+        if replaced:
+            notebook_data['cells'] = new_cells
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(notebook_data, f, indent=2)
             continue
-
-        # Add non-marked cells as is
-        new_cells.append(cell)
-
-    # Update the notebook data with the modified cells
-    notebook_data['cells'] = new_cells
-
-    # Write the modified notebook to the output file
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(notebook_data, f, indent=2)
 
 
 def generate_mcq_file(raw, data_dict, output_file="mc_questions.py"):
