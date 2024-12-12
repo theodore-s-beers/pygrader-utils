@@ -528,9 +528,29 @@ def extract_MCQ(ipynb_file):
 def check_for_heading(notebook_path, search_strings):
     """
     Checks if a Jupyter notebook contains a heading cell whose source matches any of the given strings.
-    If the heading does not exist, it writes the first search string as a new raw cell at the beginning.
+    If the heading does not exist or the file does not exist, it writes the first search string as a 
+    new raw cell at the beginning.
+
+    Args:
+        notebook_path (str): Path to the notebook file.
+        search_strings (list): List of heading strings to search for.
+
+    Returns:
+        bool: True if a matching heading exists, False otherwise.
     """
     try:
+        if not os.path.exists(notebook_path):
+            # If the file does not exist, create it with the heading
+            logger.info(f"Notebook {notebook_path} does not exist. Creating a new notebook.")
+            notebook = nbformat.v4.new_notebook()
+            new_cell = nbformat.v4.new_raw_cell(source=search_strings[0])
+            notebook.cells.append(new_cell)
+            with open(notebook_path, "w", encoding="utf-8") as f:
+                nbformat.write(notebook, f)
+            logger.info(f"Added heading '{search_strings[0]}' to new notebook {notebook_path}")
+            return False  # Heading did not exist, as the file was just created
+
+        # Open and check the existing notebook
         with open(notebook_path, "r", encoding="utf-8") as f:
             notebook = nbformat.read(f, as_version=4)
             for cell in notebook.cells:
@@ -546,9 +566,8 @@ def check_for_heading(notebook_path, search_strings):
         logger.info(f"Added heading '{search_strings[0]}' to notebook {notebook_path}")
 
     except Exception as e:
-        logger.info(f"Error reading or writing notebook {notebook_path}: {e}")
+        logger.error(f"Error reading or writing notebook {notebook_path}: {e}")
     return False
-
 
 def clean_notebook(notebook_path):
     """
@@ -666,7 +685,7 @@ def replace_cells_between_markers(raw, data, markers, ipynb_file, output_file):
                             "metadata": {},
                             "source": [
                                 "# Run this block of code by pressing Shift + Enter to display the question\n",
-                                f"from .questions.{output_file.strip("_temp.ipynb")} import Question{raw}\n",
+                                f"from .questions.{output_file.split("/")[-1].strip("_temp.ipynb")} import Question{raw}\n",
                                 "Question1().show()\n"
                             ],
                             "outputs": [],
