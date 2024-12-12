@@ -27,7 +27,9 @@ class NotebookProcessor:
             format="%(asctime)s - %(levelname)s - %(message)s"  # Log format
         )
 
-        self.logger = logging.getLogger(__name__)  # Get a logger instance
+        global logger
+        logger = logging.getLogger(__name__)  # Get a logger instance
+        self.logger = logger
 
     def process_notebooks(self):
         """
@@ -60,7 +62,7 @@ class NotebookProcessor:
 
                 def _process_single_notebook(self, notebook_path):
                     # Implementation to process a single notebook
-                    print(f"Processing notebook: {notebook_path}")
+                    _print_and_log(f"Processing notebook: {notebook_path}")
 
             processor = NotebookProcessor("/path/to/root/folder")
             processor.process_notebooks()
@@ -80,7 +82,7 @@ class NotebookProcessor:
             # Check if the notebook has the required assignment configuration
             if self.has_assignment(notebook_path):
                 
-                print(f"notebook_path = {notebook_path}")
+                _print_and_log(f"notebook_path = {notebook_path}")
                 
                 # Process the notebook if it meets the criteria
                 self._process_single_notebook(notebook_path)
@@ -126,7 +128,7 @@ class NotebookProcessor:
             student_notebook = os.path.join(notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb")
             self.clean_notebook(student_notebook)
             shutil.copy(student_notebook, self.root_folder)
-            print(f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}")
+            _print_and_log(f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}")
         
         # Remove the temp copy of the notebook
         os.remove(temp_notebook_path)
@@ -162,11 +164,11 @@ class NotebookProcessor:
             notebook_path = "path/to/notebook.ipynb"
             # Check for default tags
             contains_config = has_assignment(notebook_path)
-            print(f"Contains assignment config: {contains_config}")
+            _print_and_log(f"Contains assignment config: {contains_config}")
 
             # Check for custom tags
             contains_custom = has_assignment(notebook_path, "# CUSTOM CONFIG", "# ANOTHER CONFIG")
-            print(f"Contains custom config: {contains_custom}")
+            _print_and_log(f"Contains custom config: {contains_custom}")
         """
         # Default tags if none are provided
         if not tags:
@@ -184,15 +186,15 @@ class NotebookProcessor:
             os.makedirs(dist_folder, exist_ok=True)
             command = ["otter", "assign", notebook_path, dist_folder]
             subprocess.run(command, check=True)
-            print(f"Otter assign completed: {notebook_path} -> {dist_folder}")
+            logger.info(f"Otter assign completed: {notebook_path} -> {dist_folder}")
             
             # Remove all postfix _test from filenames in dist_folder
             NotebookProcessor.remove_test_postfix(dist_folder)
             
         except subprocess.CalledProcessError as e:
-            print(f"Error running `otter assign` for {notebook_path}: {e}")
+            logger.info(f"Error running `otter assign` for {notebook_path}: {e}")
         except Exception as e:
-            print(f"Unexpected error during `otter assign` for {notebook_path}: {e}")
+            logger.info(f"Unexpected error during `otter assign` for {notebook_path}: {e}")
 
     @staticmethod
     def remove_test_postfix(dist_folder, suffix="_temp"):
@@ -225,7 +227,7 @@ def check_for_heading(notebook_path, search_strings):
                     if any(search_string in cell.source for search_string in search_strings):
                         return True
     except Exception as e:
-        print(f"Error reading notebook {notebook_path}: {e}")
+        logger.info(f"Error reading notebook {notebook_path}: {e}")
     return False
 
 
@@ -262,10 +264,10 @@ def clean_notebook(notebook_path):
 
         with open(notebook_path, "w", encoding="utf-8") as f:
             nbformat.write(notebook, f)
-        print(f"Cleaned notebook: {notebook_path}")
+        logger.info(f"Cleaned notebook: {notebook_path}")
 
     except Exception as e:
-        print(f"Error cleaning notebook {notebook_path}: {e}")
+        logger.info(f"Error cleaning notebook {notebook_path}: {e}")
 
 
 def main():
