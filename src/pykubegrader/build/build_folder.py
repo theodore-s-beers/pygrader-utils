@@ -526,6 +526,7 @@ def extract_MCQ(ipynb_file):
 def check_for_heading(notebook_path, search_strings):
     """
     Checks if a Jupyter notebook contains a heading cell whose source matches any of the given strings.
+    If the heading does not exist, it writes the first search string as a new raw cell at the beginning.
     """
     try:
         with open(notebook_path, "r", encoding="utf-8") as f:
@@ -534,8 +535,16 @@ def check_for_heading(notebook_path, search_strings):
                 if cell.cell_type == "raw" and cell.source.startswith("#"):
                     if any(search_string in cell.source for search_string in search_strings):
                         return True
+
+        # If no matching heading is found, add the first search string as a new raw cell
+        new_cell = nbformat.v4.new_raw_cell(source=search_strings[0])
+        notebook.cells.insert(0, new_cell)
+        with open(notebook_path, "w", encoding="utf-8") as f:
+            nbformat.write(notebook, f)
+        logger.info(f"Added heading '{search_strings[0]}' to notebook {notebook_path}")
+
     except Exception as e:
-        logger.info(f"Error reading notebook {notebook_path}: {e}")
+        logger.info(f"Error reading or writing notebook {notebook_path}: {e}")
     return False
 
 
