@@ -145,6 +145,24 @@ class NotebookProcessor:
             question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
             generate_mcq_file(raw, data, output_file=question_path)
             
+            markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
+            
+            replacement_cells = [
+                                {
+                                    "cell_type": "code",
+                                    "metadata": {},
+                                    "source": [
+                                        "# Run this block of code by pressing Shift + Enter to display the question\n",
+                                        "from mc_questions import Question1\n",
+                                        "Question1().show()\n"
+                                    ],
+                                    "outputs": [],
+                                    "execution_count": None
+                                }
+                            ]
+            
+            replace_cells_between_markers(markers, replacement_cells, temp_notebook_path, temp_notebook_path)
+            
         if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
             self.run_otter_assign(temp_notebook_path, os.path.join(notebook_subfolder, "dist"))
             student_notebook = os.path.join(notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb")
@@ -166,6 +184,7 @@ class NotebookProcessor:
         # Remove all postfix from filenames in dist
         NotebookProcessor.remove_postfix(autograder_path, "_solutions")
         NotebookProcessor.remove_postfix(student_path, "_questions")
+        
 
     @staticmethod
     def has_assignment(notebook_path, *tags):
@@ -620,6 +639,60 @@ def ensure_imports(output_file, header_lines):
             f.write(existing_content)
 
         return existing_content
+    
+import json
+
+def replace_cells_between_markers(markers, replacement_cells, ipynb_file, output_file):
+    """
+    Replaces cells between specified markers in a Jupyter Notebook (.ipynb file)
+    with provided replacement cells.
+
+    Parameters:
+    markers (tuple): A tuple containing two strings: the BEGIN and END markers.
+    replacement_cells (list): A list of dictionaries representing the new cells to insert.
+    ipynb_file (str): Path to the input Jupyter Notebook file.
+    output_file (str): Path to the output Jupyter Notebook file.
+
+    Returns:
+    None: Writes the modified notebook to the output file.
+    """
+    begin_marker, end_marker = markers
+
+    # Load the notebook data
+    with open(ipynb_file, 'r', encoding='utf-8') as f:
+        notebook_data = json.load(f)
+
+    new_cells = []
+    inside_markers = False
+
+    for cell in notebook_data['cells']:
+        if cell['cell_type'] == 'raw':
+            # Check for BEGIN marker
+            if any(begin_marker in line for line in cell.get('source', [])):
+                inside_markers = True
+                # Add the replacement cells
+                new_cells.extend(replacement_cells)
+                continue
+
+            # Check for END marker
+            if any(end_marker in line for line in cell.get('source', [])):
+                inside_markers = False
+                continue
+
+        # Skip cells within the marked block
+        if inside_markers:
+            continue
+
+        # Add non-marked cells as is
+        new_cells.append(cell)
+
+    # Update the notebook data with the modified cells
+    notebook_data['cells'] = new_cells
+
+    # Write the modified notebook to the output file
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(notebook_data, f, indent=2)
+
 
 def generate_mcq_file(raw, data_dict, output_file="mc_questions.py"):
     """
@@ -673,6 +746,20 @@ def generate_mcq_file(raw, data_dict, output_file="mc_questions.py"):
         # Write points
         f.write(f"            points={raw["points"]},\n")
         f.write("        )\n")
+        
+def sanitize_string(input_string):
+    """
+    Converts a string into a valid Python variable name.
+
+    Args:
+        input_string (str): The string to convert.
+
+    Returns:
+        str: A valid Python variable name.
+    """
+    # Replace invalid characters with underscores
+    sanitized = re.sub(r'\W|^(?=\d)', '_', input_string)
+    return sanitized
 
 def main():
     parser = argparse.ArgumentParser(
