@@ -117,6 +117,10 @@ class NotebookProcessor:
         autograder_path = os.path.join(notebook_subfolder,f"dist/autograder/")
         os.makedirs(autograder_path, exist_ok=True)
         
+        # Determine the path to the student folder
+        student_path = os.path.join(notebook_subfolder,f"dist/student/")
+        os.makedirs(student_path, exist_ok=True)
+        
         if os.path.abspath(notebook_path) != os.path.abspath(new_notebook_path):
             shutil.move(notebook_path, new_notebook_path)
             self._print_and_log(f"Moved: {notebook_path} -> {new_notebook_path}")
@@ -133,12 +137,14 @@ class NotebookProcessor:
             data = extract_MCQ(temp_notebook_path)
             
             # determine the output file path
-            solution_path = f"{new_notebook_path.strip('.ipynb')}.py"
+            solution_path = f"{new_notebook_path.strip('.ipynb')}_solutions.py"
             
             # Generate the solution file
             self.generate_solution_MCQ(raw, data, output_file=solution_path)
             
-        
+            question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
+            generate_mcq_file(raw, data, output_file=question_path)
+            
         if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
             self.run_otter_assign(temp_notebook_path, os.path.join(notebook_subfolder, "dist"))
             student_notebook = os.path.join(notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb")
@@ -150,9 +156,16 @@ class NotebookProcessor:
         # Move the solution file to the autograder folder
         if 'solution_path' in locals():
             shutil.move(solution_path, autograder_path)
+            
+        if 'question_path' in locals():
+            shutil.move(question_path, student_path)
         
         # Remove the temp copy of the notebook
         os.remove(temp_notebook_path)
+        
+        # Remove all postfix from filenames in dist
+        NotebookProcessor.remove_postfix(autograder_path, "_solutions")
+        NotebookProcessor.remove_postfix(student_path, "_questions")
 
     @staticmethod
     def has_assignment(notebook_path, *tags):
@@ -210,7 +223,7 @@ class NotebookProcessor:
             logger.info(f"Otter assign completed: {notebook_path} -> {dist_folder}")
             
             # Remove all postfix _test from filenames in dist_folder
-            NotebookProcessor.remove_test_postfix(dist_folder)
+            NotebookProcessor.remove_postfix(dist_folder)
             
         except subprocess.CalledProcessError as e:
             logger.info(f"Error running `otter assign` for {notebook_path}: {e}")
@@ -351,7 +364,7 @@ class NotebookProcessor:
             return {}
 
     @staticmethod
-    def remove_test_postfix(dist_folder, suffix="_temp"):
+    def remove_postfix(dist_folder, suffix="_temp"):
         logging.info(f"Removing postfix '{suffix}' from filenames in {dist_folder}")
         for root, _, files in os.walk(dist_folder):
             for file in files:
@@ -580,6 +593,86 @@ def parse_raw(raw_list):
 
     return metadata
 
+def ensure_imports(output_file, header_lines):
+        """
+        Ensures specified header lines are present at the top of the file.
+
+        Args:
+            output_file (str): The path of the file to check and modify.
+            header_lines (list of str): Lines to ensure are present at the top.
+
+        Returns:
+            str: The existing content of the file (without the header).
+        """
+        existing_content = ""
+        if os.path.exists(output_file):
+            with open(output_file, "r", encoding="utf-8") as f:
+                existing_content = f.read()
+
+        # Determine missing lines
+        missing_lines = [line for line in header_lines if line not in existing_content]
+
+        # Write the updated content back to the file
+        with open(output_file, "w", encoding="utf-8") as f:
+            # Add missing lines at the top
+            f.writelines(missing_lines)
+            # Retain the existing content
+            f.write(existing_content)
+
+        return existing_content
+
+def generate_mcq_file(raw, data_dict, output_file="mc_questions.py"):
+    """
+    Generates a Python file defining an MCQuestion class from a dictionary.
+
+    Args:
+        raw (dict): A dictionary with raw metadata extracted from the notebook.
+        data_dict (dict): A nested dictionary containing question metadata.
+        output_file (str): The path for the output Python file.
+
+    Returns:
+        None
+    """
+    
+    # Define header lines
+    header_lines = [
+        "from pykubegrader.widgets.multiple_choice import MCQuestion, MCQ\n",
+        "import pykubegrader.initialize\n",
+        "import panel as pn\n\n",
+        "pn.extension()\n\n",
+    ]
+
+    # Ensure header lines are present
+    existing_content = ensure_imports(output_file, header_lines)
+    
+    with open(output_file, "a", encoding="utf-8") as f:
+
+        # Write the MCQuestion class
+        f.write(f"class Question{raw['question number']}(MCQuestion):\n")
+        f.write("    def __init__(self):\n")
+        f.write("        super().__init__(\n")
+        f.write('            title="Select the Best Answer:",\n')
+        f.write("            style=MCQ,\n")
+        f.write("            question_number=1,\n")
+
+        # Write keys
+        keys = [
+            f"q{content['subquestion_number']}-{title}"
+            for title, content in data_dict.items()
+        ]
+        f.write(f"            keys={keys},\n")
+
+        # Write options
+        options = [content["OPTIONS"] for content in data_dict.values()]
+        f.write(f"            options={options},\n")
+
+        # Write descriptions
+        descriptions = [content["question_text"] for content in data_dict.values()]
+        f.write(f"            descriptions={descriptions},\n")
+
+        # Write points
+        f.write(f"            points={raw["points"]},\n")
+        f.write("        )\n")
 
 def main():
     parser = argparse.ArgumentParser(
