@@ -6,6 +6,8 @@ import subprocess
 import sys
 import argparse
 import logging
+import json
+import re
 
 @dataclass
 class NotebookProcessor:
@@ -111,6 +113,10 @@ class NotebookProcessor:
         temp_notebook_path = os.path.join(notebook_subfolder, f"{notebook_name}_temp.ipynb")
         shutil.copy(notebook_path, temp_notebook_path)
         
+        # Determine the path to the autograder folder
+        autograder_path = os.path.join(notebook_subfolder,f"dist/autograder/")
+        os.makedirs(autograder_path, exist_ok=True)
+        
         if os.path.abspath(notebook_path) != os.path.abspath(new_notebook_path):
             shutil.move(notebook_path, new_notebook_path)
             self._print_and_log(f"Moved: {notebook_path} -> {new_notebook_path}")
@@ -119,16 +125,31 @@ class NotebookProcessor:
             
         if self.has_assignment(temp_notebook_path, '# BEGIN MULTIPLE CHOICE'):
             self._print_and_log(f"Notebook {temp_notebook_path} has multiple choice questions")
-            Warning("Not implemented yet")
+            
+            # Extract raw cells and multiple choice questions
+            raw = extract_raw_cells(temp_notebook_path)
+            
+            # Extract multiple choice questions
+            data = extract_MCQ(temp_notebook_path)
+            
+            # determine the output file path
+            solution_path = f"{new_notebook_path.strip('.ipynb')}.py"
+            
+            # Generate the solution file
+            self.generate_solution_MCQ(raw, data, output_file=solution_path)
             
         
         if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
             self.run_otter_assign(temp_notebook_path, os.path.join(notebook_subfolder, "dist"))
-
             student_notebook = os.path.join(notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb")
             self.clean_notebook(student_notebook)
             shutil.copy(student_notebook, self.root_folder)
             self._print_and_log(f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}")
+            
+     
+        # Move the solution file to the autograder folder
+        if 'solution_path' in locals():
+            shutil.move(solution_path, autograder_path)
         
         # Remove the temp copy of the notebook
         os.remove(temp_notebook_path)
@@ -197,6 +218,139 @@ class NotebookProcessor:
             logger.info(f"Unexpected error during `otter assign` for {notebook_path}: {e}")
 
     @staticmethod
+    def generate_solution_MCQ(raw, data, output_file="output.py"):
+        """
+        Generates a Python file with a predefined structure based on the input dictionary.
+
+        Args:
+            raw (dict): A dictionary with raw metadata extracted from the notebook.
+            data (dict): A nested dictionary with question metadata.
+            output_file (str): Path to the output Python file.
+        """
+        with open(output_file, "w", encoding="utf-8") as f:
+            # Write imports
+            f.write("from typing import Any\n\n")
+
+            # Calculate total points (assuming 2 points per question)
+            total_questions = len(data)
+            if len(raw["points"]) == 1:
+                points_ = f"[{raw['points']}] * {total_questions}"
+            else:
+                points_ = raw["points"]
+
+            f.write(f"points: list[int] = {points_}\n\n")
+
+            # Write solutions dictionary
+            f.write("solution: dict[str, Any] = {\n")
+            for title, question_data in data.items():
+                key = f"q{raw['question number']}-{question_data['subquestion_number']}-{title}"
+                solution = question_data["solution"]
+                f.write(f'    "{key}": "{solution}",\n')
+            f.write("}\n")
+
+    def extract_MCQ(ipynb_file):
+        """
+        Extracts questions from markdown cells and organizes them as a nested dictionary,
+        including subquestion numbers.
+
+        Args:
+            ipynb_file (str): Path to the .ipynb file.
+
+        Returns:
+            dict: A nested dictionary where the first-level key is the question name (text after ##),
+                and the value is a dictionary with keys: 'name', 'subquestion_number',
+                'question_text', 'OPTIONS', and 'solution'.
+        """
+        try:
+            # Load the notebook file
+            with open(ipynb_file, "r", encoding="utf-8") as f:
+                notebook_data = json.load(f)
+
+            cells = notebook_data.get("cells", [])
+            results = {}
+            within_section = False
+            subquestion_number = 0  # Counter for subquestions
+
+            for cell in cells:
+                if cell.get("cell_type") == "raw":
+                    # Check for the start and end labels in raw cells
+                    raw_content = "".join(cell.get("source", []))
+                    if "# BEGIN MULTIPLE CHOICE" in raw_content:
+                        within_section = True
+                        subquestion_number = (
+                            0  # Reset counter at the start of a new section
+                        )
+                        continue
+                    elif "# END MULTIPLE CHOICE" in raw_content:
+                        within_section = False
+                        continue
+
+                if within_section and cell.get("cell_type") == "markdown":
+                    # Parse markdown cell content
+                    markdown_content = "".join(cell.get("source", []))
+
+                    # Extract title (## heading)
+                    title_match = re.search(r"^##\s*(.+)", markdown_content, re.MULTILINE)
+                    title = title_match.group(1).strip() if title_match else None
+
+                    if title:
+                        subquestion_number += (
+                            1  # Increment the subquestion number for each question
+                        )
+
+                        # Extract question text (### heading)
+                        question_text_match = re.search(
+                            r"^###\s*\*\*(.+)\*\*", markdown_content, re.MULTILINE
+                        )
+                        question_text = (
+                            question_text_match.group(1).strip()
+                            if question_text_match
+                            else None
+                        )
+
+                        # Extract OPTIONS (lines after #### options)
+                        options_match = re.search(
+                            r"####\s*options\s*(.+?)(?=####|$)",
+                            markdown_content,
+                            re.DOTALL | re.IGNORECASE,
+                        )
+                        options = (
+                            [
+                                line.strip()
+                                for line in options_match.group(1).strip().splitlines()
+                                if line.strip()
+                            ]
+                            if options_match
+                            else []
+                        )
+
+                        # Extract solution (line after #### SOLUTION)
+                        solution_match = re.search(
+                            r"####\s*SOLUTION\s*(.+)", markdown_content, re.IGNORECASE
+                        )
+                        solution = (
+                            solution_match.group(1).strip() if solution_match else None
+                        )
+
+                        # Create nested dictionary for the question
+                        results[title] = {
+                            "name": title,
+                            "subquestion_number": subquestion_number,
+                            "question_text": question_text,
+                            "OPTIONS": options,
+                            "solution": solution,
+                        }
+
+            return results
+
+        except FileNotFoundError:
+            print(f"File {ipynb_file} not found.")
+            return {}
+        except json.JSONDecodeError:
+            print("Invalid JSON in notebook file.")
+            return {}
+
+    @staticmethod
     def remove_test_postfix(dist_folder, suffix="_temp"):
         logging.info(f"Removing postfix '{suffix}' from filenames in {dist_folder}")
         for root, _, files in os.walk(dist_folder):
@@ -206,6 +360,7 @@ class NotebookProcessor:
                     new_file_path = os.path.join(root, file.replace(suffix, ""))
                     os.rename(old_file_path, new_file_path)
                     logging.info(f"Renamed: {old_file_path} -> {new_file_path}")
+                        
     
     @staticmethod
     def clean_notebook(notebook_path):
@@ -214,6 +369,138 @@ class NotebookProcessor:
         """
         clean_notebook(notebook_path)
 
+def extract_raw_cells(ipynb_file):
+        """
+        Extracts raw cells from a Jupyter Notebook file.
+
+        Args:
+            ipynb_file (str): Path to the .ipynb file.
+
+        Returns:
+            list of str: Contents of all raw cells.
+        """
+        try:
+            with open(ipynb_file, "r", encoding="utf-8") as f:
+                notebook_data = json.load(f)
+
+            # Extract raw cell content
+            raw_cells = [
+                cell["source"]
+                for cell in notebook_data.get("cells", [])
+                if cell.get("cell_type") == "raw"
+            ]
+
+            # Join multiline sources into single strings
+            return parse_raw(["".join(cell) for cell in raw_cells])
+
+        except FileNotFoundError:
+            print(f"File {ipynb_file} not found.")
+            return []
+        except json.JSONDecodeError:
+            print("Invalid JSON in notebook file.")
+            return []
+
+def extract_MCQ(ipynb_file):
+    """
+    Extracts questions from markdown cells and organizes them as a nested dictionary,
+    including subquestion numbers.
+
+    Args:
+        ipynb_file (str): Path to the .ipynb file.
+
+    Returns:
+        dict: A nested dictionary where the first-level key is the question name (text after ##),
+              and the value is a dictionary with keys: 'name', 'subquestion_number',
+              'question_text', 'OPTIONS', and 'solution'.
+    """
+    try:
+        # Load the notebook file
+        with open(ipynb_file, "r", encoding="utf-8") as f:
+            notebook_data = json.load(f)
+
+        cells = notebook_data.get("cells", [])
+        results = {}
+        within_section = False
+        subquestion_number = 0  # Counter for subquestions
+
+        for cell in cells:
+            if cell.get("cell_type") == "raw":
+                # Check for the start and end labels in raw cells
+                raw_content = "".join(cell.get("source", []))
+                if "# BEGIN MULTIPLE CHOICE" in raw_content:
+                    within_section = True
+                    subquestion_number = (
+                        0  # Reset counter at the start of a new section
+                    )
+                    continue
+                elif "# END MULTIPLE CHOICE" in raw_content:
+                    within_section = False
+                    continue
+
+            if within_section and cell.get("cell_type") == "markdown":
+                # Parse markdown cell content
+                markdown_content = "".join(cell.get("source", []))
+
+                # Extract title (## heading)
+                title_match = re.search(r"^##\s*(.+)", markdown_content, re.MULTILINE)
+                title = title_match.group(1).strip() if title_match else None
+
+                if title:
+                    subquestion_number += (
+                        1  # Increment the subquestion number for each question
+                    )
+
+                    # Extract question text (### heading)
+                    question_text_match = re.search(
+                        r"^###\s*\*\*(.+)\*\*", markdown_content, re.MULTILINE
+                    )
+                    question_text = (
+                        question_text_match.group(1).strip()
+                        if question_text_match
+                        else None
+                    )
+
+                    # Extract OPTIONS (lines after #### options)
+                    options_match = re.search(
+                        r"####\s*options\s*(.+?)(?=####|$)",
+                        markdown_content,
+                        re.DOTALL | re.IGNORECASE,
+                    )
+                    options = (
+                        [
+                            line.strip()
+                            for line in options_match.group(1).strip().splitlines()
+                            if line.strip()
+                        ]
+                        if options_match
+                        else []
+                    )
+
+                    # Extract solution (line after #### SOLUTION)
+                    solution_match = re.search(
+                        r"####\s*SOLUTION\s*(.+)", markdown_content, re.IGNORECASE
+                    )
+                    solution = (
+                        solution_match.group(1).strip() if solution_match else None
+                    )
+
+                    # Create nested dictionary for the question
+                    results[title] = {
+                        "name": title,
+                        "subquestion_number": subquestion_number,
+                        "question_text": question_text,
+                        "OPTIONS": options,
+                        "solution": solution,
+                    }
+
+        return results
+
+    except FileNotFoundError:
+        print(f"File {ipynb_file} not found.")
+        return {}
+    except json.JSONDecodeError:
+        print("Invalid JSON in notebook file.")
+        return {}
 
 def check_for_heading(notebook_path, search_strings):
     """
@@ -268,6 +555,30 @@ def clean_notebook(notebook_path):
 
     except Exception as e:
         logger.info(f"Error cleaning notebook {notebook_path}: {e}")
+        
+def parse_raw(raw_list):
+    """
+    Converts a list of raw strings into key-value pairs for multiple-choice metadata.
+
+    Args:
+        raw_list (list of str): List containing raw strings of multiple-choice metadata.
+
+    Returns:
+        dict: Dictionary of extracted key-value pairs.
+    """
+    metadata = {}
+
+    for line in raw_list:
+        # Check if line contains # BEGIN MULTIPLE CHOICE
+        if line.startswith("# BEGIN MULTIPLE CHOICE"):
+            lines = line.split("\n")
+            for item in lines:
+                if item.startswith("##"):
+                    # Extract key and value from lines
+                    key, value = item[3:].split(":", 1)
+                    metadata[key.strip()] = value.strip()
+
+    return metadata
 
 
 def main():
