@@ -130,17 +130,19 @@ class NotebookProcessor:
         if self.has_assignment(temp_notebook_path, '# BEGIN MULTIPLE CHOICE'):
             self._print_and_log(f"Notebook {temp_notebook_path} has multiple choice questions")
             
-            # Extract raw cells and multiple choice questions
-            raw = extract_raw_cells(temp_notebook_path)
-            
-            # Extract multiple choice questions
+            # Extract all the multiple choice questions
             data = extract_MCQ(temp_notebook_path)
             
             # determine the output file path
             solution_path = f"{new_notebook_path.strip('.ipynb')}_solutions.py"
             
-            # Generate the solution file
-            self.generate_solution_MCQ(raw, data, output_file=solution_path)
+            for data_key, data_value in data.items():
+            
+                # Extract the first raw cells
+                raw = extract_raw_cells(temp_notebook_path)
+            
+                # Generate the solution file
+                self.generate_solution_MCQ(raw, data, output_file=solution_path)
             
             question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
             generate_mcq_file(raw, data, output_file=question_path)
@@ -245,9 +247,10 @@ class NotebookProcessor:
             data (dict): A nested dictionary with question metadata.
             output_file (str): Path to the output Python file.
         """
-        with open(output_file, "w", encoding="utf-8") as f:
-            # Write imports
-            f.write("from typing import Any\n\n")
+        
+        check_for_heading(output_file, ["from typing import Any"])
+        
+        with open(output_file, "a", encoding="utf-8") as f:
 
             # Calculate total points (assuming 2 points per question)
             total_questions = len(data)
@@ -387,7 +390,7 @@ class NotebookProcessor:
         """
         clean_notebook(notebook_path)
 
-def extract_raw_cells(ipynb_file):
+def extract_raw_cells(ipynb_file, heading="# BEGIN MULTIPLE CHOICE"):
         """
         Extracts raw cells from a Jupyter Notebook file.
 
@@ -409,7 +412,7 @@ def extract_raw_cells(ipynb_file):
             ]
 
             # Join multiline sources into single strings
-            return parse_raw(["".join(cell) for cell in raw_cells])
+            return _get_first_heading(["".join(cell) for cell in raw_cells])
 
         except FileNotFoundError:
             print(f"File {ipynb_file} not found.")
