@@ -159,6 +159,7 @@ class NotebookProcessor:
             student_notebook = os.path.join(notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb")
             self.clean_notebook(student_notebook)
             shutil.copy(student_notebook, self.root_folder)
+            NotebookProcessor.replace_temp_in_notebook(student_notebook, student_notebook)
             self._print_and_log(f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}")
             
      
@@ -175,7 +176,36 @@ class NotebookProcessor:
         # Remove all postfix from filenames in dist
         NotebookProcessor.remove_postfix(autograder_path, "_solutions")
         NotebookProcessor.remove_postfix(student_path, "_questions")
-        
+    
+    
+    @staticmethod
+    def replace_temp_in_notebook(input_file, output_file):
+        """
+        Replaces occurrences of '_temp.ipynb' with '.ipynb' in a Jupyter Notebook.
+
+        Parameters:
+        input_file (str): Path to the input Jupyter Notebook file.
+        output_file (str): Path to the output Jupyter Notebook file.
+
+        Returns:
+        None: Writes the modified notebook to the output file.
+        """
+        # Load the notebook data
+        with open(input_file, 'r', encoding='utf-8') as f:
+            notebook_data = json.load(f)
+
+        # Iterate through each cell and update its content
+        for cell in notebook_data.get('cells', []):
+            if 'source' in cell:
+                # Replace occurrences of '_temp.ipynb' in the cell source
+                cell['source'] = [
+                    line.replace('_temp.ipynb', '.ipynb') for line in cell['source']
+                ]
+
+        # Write the updated notebook to the output file
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(notebook_data, f, indent=2)
+    
     @staticmethod
     def merge_metadata(raw, data):
                 """
