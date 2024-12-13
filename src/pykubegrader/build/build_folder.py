@@ -250,7 +250,7 @@ class NotebookProcessor:
             output_file (str): Path to the output Python file.
         """
         
-        check_for_heading(output_file, ["from typing import Any"])
+        ensure_imports(output_file, ["from typing import Any"])
         
         with open(output_file, "a", encoding="utf-8") as f:
 
