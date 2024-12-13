@@ -700,6 +700,8 @@ def replace_cells_between_markers(data, markers, ipynb_file, output_file):
     """
     begin_marker, end_marker = markers
     file_name_ipynb = ipynb_file.split('/')[-1].strip('_temp.ipynb')
+    
+    file_name_ipynb = sanitize_string(file_name_ipynb)
 
     # Iterate over each set of replacement data
     for data_ in data:
@@ -760,14 +762,12 @@ def replace_cells_between_markers(data, markers, ipynb_file, output_file):
                 new_cells.append(cell)
                 continue
                 
-        
-        notebook_data_ = {}
-        # Update the notebook with modified cells
-        notebook_data_['cells'] = new_cells
+        # Update the notebook with modified cells, preserving metadata
+        notebook_data['cells'] = new_cells
 
         # Write the modified notebook to the output file
         with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(notebook_data_, f, indent=2)
+            json.dump(notebook_data, f, indent=2)
 
         # Update ipynb_file to the output file for subsequent iterations
         ipynb_file = output_file
