@@ -268,34 +268,40 @@ class NotebookProcessor:
             logger.info(f"Unexpected error during `otter assign` for {notebook_path}: {e}")
 
     @staticmethod
-    def generate_solution_MCQ(data, output_file="output.py"):
+    def generate_solution_MCQ(data_list, output_file="output.py"):
         """
-        Generates a Python file with a predefined structure based on the input dictionary.
+        Generates a Python file with solutions and total points based on the input data.
 
         Args:
-            raw (dict): A dictionary with raw metadata extracted from the notebook.
-            data (dict): A nested dictionary with question metadata.
+            data_list (list): A list of dictionaries containing question metadata.
             output_file (str): Path to the output Python file.
         """
+        from collections import defaultdict
         
-        ensure_imports(output_file, ["from typing import Any"])
-        
-        with open(output_file, "a", encoding="utf-8") as f:
+        # Ensure imports
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write("from typing import Any\n\n")
 
-            # Calculate total points (assuming 2 points per question)
-            total_questions = len(data)
-            if len(data["points"]) == 1:
-                points_ = f"[{data['points']}] * {total_questions}"
-            else:
-                points_ = data["points"]
+            solutions = {}
+            total_points = 0
 
-            f.write(f"points: list[int] = {points_}\n\n")
+            for question_set in data_list:
+                for key, question_data in question_set.items():
+                    # Construct solution key
+                    solution_key = f"q{question_data['question number']}-{question_data['subquestion_number']}-{key}"
+
+                    # Add solution to the dictionary
+                    solutions[solution_key] = question_data['solution']
+
+                    # Accumulate total points
+                    total_points += question_data['points']
+
+            # Write total points
+            f.write(f"total_points: int = {total_points}\n\n")
 
             # Write solutions dictionary
-            f.write("solution: dict[str, Any] = {\n")
-            for title, question_data in data.items():
-                key = f"q{data['question number']}-{question_data['subquestion_number']}-{title}"
-                solution = question_data["solution"]
+            f.write("solutions: dict[str, Any] = {\n")
+            for key, solution in solutions.items():
                 f.write(f'    "{key}": "{solution}",\n')
             f.write("}\n")
 
