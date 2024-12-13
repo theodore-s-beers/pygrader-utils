@@ -728,7 +728,7 @@ def clean_notebook(notebook_path):
 
                 cleaned_cells.append(cell)
             else:
-                print(f"Removed cell: {cell.source.strip()[:50]}...")
+                logger.info(f"Removed cell: {cell.source.strip()[:50]}...")
 
         notebook.cells = cleaned_cells
 
@@ -766,13 +766,7 @@ def ensure_imports(output_file, header_lines):
             # Retain the existing content
             f.write(existing_content)
 
-        return existing_content
-    
-import json
-
-import json
-
-import json
+        return existing_content0
 
 def replace_cells_between_markers(data, markers, ipynb_file, output_file):
     """
@@ -825,8 +819,6 @@ def replace_cells_between_markers(data, markers, ipynb_file, output_file):
                 if any(begin_marker in line for line in cell.get('source', [])):
                     # Enter the marked block
                     inside_markers = True
-                    # Replace the block and stop further search
-                    print(replacement_cells)
                     new_cells.append(replacement_cells)
                     continue
                 elif inside_markers:
