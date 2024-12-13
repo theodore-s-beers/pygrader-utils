@@ -680,10 +680,12 @@ def ensure_imports(output_file, header_lines):
     
 import json
 
+import json
+
 def replace_cells_between_markers(data, markers, ipynb_file, output_file):
     """
-    Replaces the top-most cells between specified markers in a Jupyter Notebook (.ipynb file)
-    with provided replacement cells and returns immediately after the replacement.
+    Replaces the cells between specified markers in a Jupyter Notebook (.ipynb file)
+    with provided replacement cells and writes the result to the output file.
 
     Parameters:
     data (list): A list of dictionaries with data for creating replacement cells.
@@ -695,68 +697,55 @@ def replace_cells_between_markers(data, markers, ipynb_file, output_file):
     None: Writes the modified notebook to the output file.
     """
     begin_marker, end_marker = markers
-    
     file_name_ipynb = output_file.split('/')[-1].strip('_temp.ipynb')
 
+    # Load the notebook data
+    with open(ipynb_file, 'r', encoding='utf-8') as f:
+        notebook_data = json.load(f)
+
+    # Generate replacement cells
+    replacement_cells = []
     for data_ in data:
         dict_ = data_[next(iter(data_.keys()))]
+        replacement_cells.append({
+            "cell_type": "code",
+            "metadata": {},
+            "source": [
+                "# Run this block of code by pressing Shift + Enter to display the question\n",
+                f"from questions.{file_name_ipynb} import Question{dict_['question number']}\n",
+                f"Question{dict_['question number']}().show()\n"
+            ],
+            "outputs": [],
+            "execution_count": None
+        })
 
-        replacement_cells = [
-            {
-                "cell_type": "code",
-                "metadata": {},
-                "source": [
-                    "# Run this block of code by pressing Shift + Enter to display the question\n",
-                    f"from questions.{file_name_ipynb} import Question{dict_['question number']}\n",
-                    f"Question{dict_['question number']}().show()\n"
-                ],
-                "outputs": [],
-                "execution_count": None
-            }
-        ]
+    # Process the notebook cells
+    new_cells = []
+    inside_markers = False
 
-        # Load the notebook data
-        with open(ipynb_file, 'r', encoding='utf-8') as f:
-            notebook_data = json.load(f)
+    for cell in notebook_data['cells']:
+        if any(begin_marker in line for line in cell.get('source', [])):
+            # Enter the marked block
+            inside_markers = True
+            # Replace cells after encountering the BEGIN marker
+            new_cells.extend(replacement_cells)
+            continue
+        elif any(end_marker in line for line in cell.get('source', [])):
+            # Exit the marked block
+            inside_markers = False
+            continue
 
-        new_cells = []
-        inside_markers = False
-        replaced = False
-
-        for cell in notebook_data['cells']:
-            if replaced:
-                # If replacement is done, copy all remaining cells as-is
-                new_cells.append(cell)
-                continue
-
-            # Check for BEGIN marker
-            if any(begin_marker in line for line in cell.get('source', [])):
-                inside_markers = True
-                # Add the replacement cells
-                new_cells.extend(replacement_cells)
-                replaced = True  # Ensure only the first marked block is replaced
-                continue
-
-            # Check for END marker
-            if inside_markers and any(end_marker in line for line in cell.get('source', [])):
-                inside_markers = False
-                continue
-
-            # Skip cells within the marked block
-            if inside_markers:
-                continue
-
-            # Add non-marked cells as-is
+        if not inside_markers:
+            # Add cells outside the marked block
             new_cells.append(cell)
 
-        # If the replacement happened, update the notebook and write to the output file
-        if replaced:
-            notebook_data['cells'] = new_cells
-            with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(notebook_data, f, indent=2)
-            
-            ipynb_file = output_file
-            continue
+    # Update the notebook with modified cells
+    notebook_data['cells'] = new_cells
+
+    # Write the modified notebook to the output file
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(notebook_data, f, indent=2)
+
 
 
 def generate_mcq_file(data_dict, output_file="mc_questions.py"):
