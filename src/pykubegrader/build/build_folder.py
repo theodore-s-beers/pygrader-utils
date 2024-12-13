@@ -141,14 +141,10 @@ class NotebookProcessor:
             
             data = NotebookProcessor.merge_metadata(raw, data)
                     
-            a = 1
+            for data_ in data:
                 
-                # data_ = {data_key: data_value}
-            
-                
-            
-                # # Generate the solution file
-                # self.generate_solution_MCQ(raw, data, output_file=solution_path)
+                # Generate the solution file
+                self.generate_solution_MCQ(data, output_file=solution_path)
             
                 # question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
                 # generate_mcq_file(raw, data_, output_file=question_path)
@@ -272,7 +268,7 @@ class NotebookProcessor:
             logger.info(f"Unexpected error during `otter assign` for {notebook_path}: {e}")
 
     @staticmethod
-    def generate_solution_MCQ(raw, data, output_file="output.py"):
+    def generate_solution_MCQ(data, output_file="output.py"):
         """
         Generates a Python file with a predefined structure based on the input dictionary.
 
@@ -288,17 +284,17 @@ class NotebookProcessor:
 
             # Calculate total points (assuming 2 points per question)
             total_questions = len(data)
-            if len(raw["points"]) == 1:
-                points_ = f"[{raw['points']}] * {total_questions}"
+            if len(data["points"]) == 1:
+                points_ = f"[{data['points']}] * {total_questions}"
             else:
-                points_ = raw["points"]
+                points_ = data["points"]
 
             f.write(f"points: list[int] = {points_}\n\n")
 
             # Write solutions dictionary
             f.write("solution: dict[str, Any] = {\n")
             for title, question_data in data.items():
-                key = f"q{raw['question number']}-{question_data['subquestion_number']}-{title}"
+                key = f"q{data['question number']}-{question_data['subquestion_number']}-{title}"
                 solution = question_data["solution"]
                 f.write(f'    "{key}": "{solution}",\n')
             f.write("}\n")
