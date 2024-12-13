@@ -136,22 +136,22 @@ class NotebookProcessor:
             # determine the output file path
             solution_path = f"{new_notebook_path.strip('.ipynb')}_solutions.py"
             
-            # Extract the first raw cells
-            raw = extract_raw_cells(temp_notebook_path)
+            # Extract the first value cells
+            value = extract_raw_cells(temp_notebook_path)
             
-            data = NotebookProcessor.merge_metadata(raw, data)
+            data = NotebookProcessor.merge_metadata(value, data)
                     
             for data_ in data:
                 
                 # Generate the solution file
                 self.generate_solution_MCQ(data, output_file=solution_path)
             
-                # question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
-                # generate_mcq_file(raw, data_, output_file=question_path)
+                question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
+                # generate_mcq_file(value, data_, output_file=question_path)
             
                 # markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
                 
-                # replace_cells_between_markers(raw, data, markers, temp_notebook_path, temp_notebook_path)
+                # replace_cells_between_markers(value, data, markers, temp_notebook_path, temp_notebook_path)
             
         if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
             self.run_otter_assign(temp_notebook_path, os.path.join(notebook_subfolder, "dist"))
@@ -329,8 +329,8 @@ class NotebookProcessor:
             subquestion_number = 0  # Counter for subquestions
 
             for cell in cells:
-                if cell.get("cell_type") == "raw":
-                    # Check for the start and end labels in raw cells
+                if cell.get("cell_type") == "value":
+                    # Check for the start and end labels in value cells
                     raw_content = "".join(cell.get("source", []))
                     if "# BEGIN MULTIPLE CHOICE" in raw_content:
                         within_section = True
@@ -428,11 +428,11 @@ class NotebookProcessor:
 
 def extract_raw_cells(ipynb_file, heading="# BEGIN MULTIPLE CHOICE"):
     """
-    Extracts all metadata from raw cells in a Jupyter Notebook file for a specified heading.
+    Extracts all metadata from value cells in a Jupyter Notebook file for a specified heading.
 
     Args:
         ipynb_file (str): Path to the .ipynb file.
-        heading (str): The heading to search for in raw cells.
+        heading (str): The heading to search for in value cells.
 
     Returns:
         list of dict: A list of dictionaries containing extracted metadata for each heading occurrence.
@@ -441,14 +441,14 @@ def extract_raw_cells(ipynb_file, heading="# BEGIN MULTIPLE CHOICE"):
         with open(ipynb_file, "r", encoding="utf-8") as f:
             notebook_data = json.load(f)
 
-        # Extract raw cell content
+        # Extract value cell content
         raw_cells = [
             "".join(cell.get("source", []))  # Join multiline sources into a single string
             for cell in notebook_data.get("cells", [])
             if cell.get("cell_type") == "raw"
         ]
 
-        # Process each raw cell to extract metadata
+        # Process each value cell to extract metadata
         metadata_list = []
         for raw_cell in raw_cells:
             metadata_list.extend(_extract_metadata_from_heading(raw_cell, heading))
@@ -465,10 +465,10 @@ def extract_raw_cells(ipynb_file, heading="# BEGIN MULTIPLE CHOICE"):
 
 def _extract_metadata_from_heading(raw_cell, heading="# BEGIN MULTIPLE CHOICE"):
     """
-    Extracts metadata for a single raw cell string each time the heading is found.
+    Extracts metadata for a single value cell string each time the heading is found.
 
     Args:
-        raw_cell (str): String containing raw cell content.
+        raw_cell (str): String containing value cell content.
         heading (str): The heading to identify sections.
 
     Returns:
@@ -603,7 +603,7 @@ def check_for_heading(notebook_path, search_strings):
         with open(notebook_path, "r", encoding="utf-8") as f:
             notebook = nbformat.read(f, as_version=4)
             for cell in notebook.cells:
-                if cell.cell_type == "raw" and cell.source.startswith("#"):
+                if cell.cell_type == "value" and cell.source.startswith("#"):
                     if any(search_string in cell.source for search_string in search_strings):
                         return True
     except Exception as e:
@@ -679,7 +679,7 @@ def ensure_imports(output_file, header_lines):
     
 import json
 
-def replace_cells_between_markers(raw, data, markers, ipynb_file, output_file):
+def replace_cells_between_markers(value, data, markers, ipynb_file, output_file):
     """
     Replaces the top-most cells between specified markers in a Jupyter Notebook (.ipynb file)
     with provided replacement cells and returns immediately after the replacement.
@@ -696,7 +696,7 @@ def replace_cells_between_markers(raw, data, markers, ipynb_file, output_file):
     begin_marker, end_marker = markers
     
     
-    for key, value in raw.items():
+    for key, value in value.items():
         
         replacement_cells = [
                         {
@@ -704,7 +704,7 @@ def replace_cells_between_markers(raw, data, markers, ipynb_file, output_file):
                             "metadata": {},
                             "source": [
                                 "# Run this block of code by pressing Shift + Enter to display the question\n",
-                                f"from .questions.{output_file.split("/")[-1].strip("_temp.ipynb")} import Question{raw}\n",
+                                f"from .questions.{output_file.split("/")[-1].strip("_temp.ipynb")} import Question{value}\n",
                                 "Question1().show()\n"
                             ],
                             "outputs": [],
@@ -721,7 +721,7 @@ def replace_cells_between_markers(raw, data, markers, ipynb_file, output_file):
         replaced = False
 
         for cell in notebook_data['cells']:
-            if cell['cell_type'] == 'raw' and not replaced:
+            if cell['cell_type'] == 'value' and not replaced:
                 # Check for BEGIN marker
                 if any(begin_marker in line for line in cell.get('source', [])):
                     inside_markers = True
@@ -750,12 +750,11 @@ def replace_cells_between_markers(raw, data, markers, ipynb_file, output_file):
             continue
 
 
-def generate_mcq_file(raw, data_dict, output_file="mc_questions.py"):
+def generate_mcq_file(data_dict, output_file="mc_questions.py"):
     """
     Generates a Python file defining an MCQuestion class from a dictionary.
 
     Args:
-        raw (dict): A dictionary with raw metadata extracted from the notebook.
         data_dict (dict): A nested dictionary containing question metadata.
         output_file (str): The path for the output Python file.
 
@@ -774,34 +773,52 @@ def generate_mcq_file(raw, data_dict, output_file="mc_questions.py"):
     # Ensure header lines are present
     existing_content = ensure_imports(output_file, header_lines)
     
-    with open(output_file, "a", encoding="utf-8") as f:
+    for question_dict in data_dict:
+        
+        with open(output_file, "a", encoding="utf-8") as f:
+            
+            for i, (q_key, q_value) in enumerate(question_dict.items()):
+                
+                if i == 0:
+                    # Write the MCQuestion class
+                    f.write(f"class Question{q_value['question number']}(MCQuestion):\n")
+                    f.write("    def __init__(self):\n")
+                    f.write("        super().__init__(\n")
+                    f.write(f"            title=f'{q_value['question_text']}',\n")
+                    f.write("            style=MCQ,\n")
+                    f.write(f"            question_number={q_value['question number']},\n")
+                break
+            
+            keys = []
+            for i, (q_key, q_value) in enumerate(question_dict.items()):
+                
+                # Write keys
+                keys.append(f"q{q_value['subquestion_number']}-{q_value['name']}")
+                
+            f.write(f"            keys={keys},\n")
+            
+            options = []
+            for i, (q_key, q_value) in enumerate(question_dict.items()):
 
-        # Write the MCQuestion class
-        f.write(f"class Question{raw['question number']}(MCQuestion):\n")
-        f.write("    def __init__(self):\n")
-        f.write("        super().__init__(\n")
-        f.write('            title="Select the Best Answer:",\n')
-        f.write("            style=MCQ,\n")
-        f.write(f"            question_number={raw['question number']},\n")
+                # Write options
+                options.append(q_value["OPTIONS"])
+            
+            f.write(f"            options={options},\n")
 
-        # Write keys
-        keys = [
-            f"q{content['subquestion_number']}-{title}"
-            for title, content in data_dict.items()
-        ]
-        f.write(f"            keys={keys},\n")
+            descriptions = []
+            for i, (q_key, q_value) in enumerate(question_dict.items()):
+                
+                # Write descriptions
+                descriptions.append(q_value["question_text"])
+            f.write(f"            descriptions={descriptions},\n")
 
-        # Write options
-        options = [content["OPTIONS"] for content in data_dict.values()]
-        f.write(f"            options={options},\n")
-
-        # Write descriptions
-        descriptions = [content["question_text"] for content in data_dict.values()]
-        f.write(f"            descriptions={descriptions},\n")
-
-        # Write points
-        f.write(f"            points={raw["points"]},\n")
-        f.write("        )\n")
+            points = []
+            for i, (q_key, q_value) in enumerate(question_dict.items()):
+                # Write points
+                points.append(q_value["points"])
+                
+            f.write(f"            points={points},\n")
+            f.write("        )\n")
         
 def sanitize_string(input_string):
     """
