@@ -136,19 +136,12 @@ class NotebookProcessor:
             # determine the output file path
             solution_path = f"{new_notebook_path.strip('.ipynb')}_solutions.py"
             
-            # loops around the questions 
-            for _data in data:
-                
-                # Extract the first raw cells
-                raw = extract_raw_cells(temp_notebook_path)
-                
-                data[data_key]['title'] = raw['title']
-                if len(raw['points'])==1:
-                    data[data_key]['points'] = raw['points']
-                
-                # add the raw to the data dictionary
-                data[data_key]['raw'] = raw
-                
+            # Extract the first raw cells
+            raw = extract_raw_cells(temp_notebook_path)
+            
+            data = NotebookProcessor.merge_metadata(raw, data)
+                    
+            a = 1
                 
                 # data_ = {data_key: data_value}
             
@@ -186,7 +179,35 @@ class NotebookProcessor:
         NotebookProcessor.remove_postfix(autograder_path, "_solutions")
         NotebookProcessor.remove_postfix(student_path, "_questions")
         
+    @staticmethod
+    def merge_metadata(raw, data):
+                """
+                Merges raw metadata with extracted question data.
 
+                Args:
+                    raw (list): A list of dictionaries containing raw metadata.
+                    data (list): A list of dictionaries containing extracted question data.
+
+                Returns:
+                    list: A list of dictionaries with merged metadata.
+                """
+                merged_data = []
+
+                # Loop around the questions
+                for i, _data in enumerate(data):
+                    if isinstance(raw[i]['points'], str):
+                        points_ = [float(raw[i]['points'])] * len(_data)
+                    else:
+                        points_ = raw[i]['points']
+
+                    raw[i].pop('points', None)
+
+                    for j, (key, value) in enumerate(_data.items()):
+                        data[i][key] = data[i][key] | raw[i]
+                        data[i][key]['points'] = points_[j]
+
+                return data
+    
     @staticmethod
     def has_assignment(notebook_path, *tags):
         """
