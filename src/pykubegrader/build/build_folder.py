@@ -148,11 +148,11 @@ class NotebookProcessor:
             
                 question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
                 
-                generate_mcq_file(data, output_file=question_path)
+            generate_mcq_file(data, output_file=question_path)
+        
+            markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
             
-                markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
-                
-                replace_cells_between_markers(value, data, markers, temp_notebook_path, temp_notebook_path)
+            replace_cells_between_markers(data, markers, temp_notebook_path, temp_notebook_path)
             
         if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
             self.run_otter_assign(temp_notebook_path, os.path.join(notebook_subfolder, "dist"))
@@ -330,8 +330,8 @@ class NotebookProcessor:
             subquestion_number = 0  # Counter for subquestions
 
             for cell in cells:
-                if cell.get("cell_type") == "value":
-                    # Check for the start and end labels in value cells
+                if cell.get("cell_type") == "raw":
+                    # Check for the start and end labels in raw cells
                     raw_content = "".join(cell.get("source", []))
                     if "# BEGIN MULTIPLE CHOICE" in raw_content:
                         within_section = True
@@ -604,7 +604,7 @@ def check_for_heading(notebook_path, search_strings):
         with open(notebook_path, "r", encoding="utf-8") as f:
             notebook = nbformat.read(f, as_version=4)
             for cell in notebook.cells:
-                if cell.cell_type == "value" and cell.source.startswith("#"):
+                if cell.cell_type == "raw" and cell.source.startswith("#"):
                     if any(search_string in cell.source for search_string in search_strings):
                         return True
     except Exception as e:
