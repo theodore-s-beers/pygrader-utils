@@ -682,6 +682,8 @@ import json
 
 import json
 
+import json
+
 def replace_cells_between_markers(data, markers, ipynb_file, output_file):
     """
     Replaces the cells between specified markers in a Jupyter Notebook (.ipynb file)
@@ -697,17 +699,15 @@ def replace_cells_between_markers(data, markers, ipynb_file, output_file):
     None: Writes the modified notebook to the output file.
     """
     begin_marker, end_marker = markers
-    file_name_ipynb = output_file.split('/')[-1].strip('_temp.ipynb')
+    file_name_ipynb = ipynb_file.split('/')[-1].strip('_temp.ipynb')
 
-    # Load the notebook data
-    with open(ipynb_file, 'r', encoding='utf-8') as f:
-        notebook_data = json.load(f)
-
-    # Generate replacement cells
-    replacement_cells = []
+    # Iterate over each set of replacement data
     for data_ in data:
+        
         dict_ = data_[next(iter(data_.keys()))]
-        replacement_cells.append({
+
+        # Create the replacement cells
+        replacement_cells = {
             "cell_type": "code",
             "metadata": {},
             "source": [
@@ -717,35 +717,60 @@ def replace_cells_between_markers(data, markers, ipynb_file, output_file):
             ],
             "outputs": [],
             "execution_count": None
-        })
+        }
 
-    # Process the notebook cells
-    new_cells = []
-    inside_markers = False
+        # Process the notebook cells
+        new_cells = []
+        inside_markers = False
+        done = False
+        
+        # Load the notebook data
+        with open(ipynb_file, 'r', encoding='utf-8') as f:
+            notebook_data = json.load(f)
 
-    for cell in notebook_data['cells']:
-        if any(begin_marker in line for line in cell.get('source', [])):
-            # Enter the marked block
-            inside_markers = True
-            # Replace cells after encountering the BEGIN marker
-            new_cells.extend(replacement_cells)
-            continue
-        elif any(end_marker in line for line in cell.get('source', [])):
-            # Exit the marked block
-            inside_markers = False
-            continue
+        for cell in notebook_data['cells']:
+            if cell.get('cell_type') == 'raw' and not done: 
+                if any(begin_marker in line for line in cell.get('source', [])):
+                    # Enter the marked block
+                    inside_markers = True
+                    # Replace the block and stop further search
+                    print(replacement_cells)
+                    new_cells.append(replacement_cells)
+                    continue
+                elif inside_markers:
+                    if any(end_marker in line for line in cell.get('source', [])):
+                        # Exit the marked block
+                        inside_markers = False
+                        done = True
+                        continue
+                    else:
+                        continue
+                else: 
+                    new_cells.append(cell)
+            elif inside_markers:
+                # Skip cells inside the marked block
+                continue
+            else: 
+                new_cells.append(cell)
+                continue
+            
+                
+            if done:
+                # Add cells outside the marked block
+                new_cells.append(cell)
+                continue
+                
+        
+        notebook_data_ = {}
+        # Update the notebook with modified cells
+        notebook_data_['cells'] = new_cells
 
-        if not inside_markers:
-            # Add cells outside the marked block
-            new_cells.append(cell)
+        # Write the modified notebook to the output file
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(notebook_data_, f, indent=2)
 
-    # Update the notebook with modified cells
-    notebook_data['cells'] = new_cells
-
-    # Write the modified notebook to the output file
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(notebook_data, f, indent=2)
-
+        # Update ipynb_file to the output file for subsequent iterations
+        ipynb_file = output_file
 
 
 def generate_mcq_file(data_dict, output_file="mc_questions.py"):
