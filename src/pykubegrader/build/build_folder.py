@@ -147,11 +147,12 @@ class NotebookProcessor:
                 self.generate_solution_MCQ(data, output_file=solution_path)
             
                 question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
-                # generate_mcq_file(value, data_, output_file=question_path)
-            
-                # markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
                 
-                # replace_cells_between_markers(value, data, markers, temp_notebook_path, temp_notebook_path)
+                generate_mcq_file(data, output_file=question_path)
+            
+                markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
+                
+                replace_cells_between_markers(value, data, markers, temp_notebook_path, temp_notebook_path)
             
         if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
             self.run_otter_assign(temp_notebook_path, os.path.join(notebook_subfolder, "dist"))
@@ -679,14 +680,14 @@ def ensure_imports(output_file, header_lines):
     
 import json
 
-def replace_cells_between_markers(value, data, markers, ipynb_file, output_file):
+def replace_cells_between_markers(data, markers, ipynb_file, output_file):
     """
     Replaces the top-most cells between specified markers in a Jupyter Notebook (.ipynb file)
     with provided replacement cells and returns immediately after the replacement.
 
     Parameters:
+    data (list): A list of dictionaries with data for creating replacement cells.
     markers (tuple): A tuple containing two strings: the BEGIN and END markers.
-    replacement_cells (list): A list of dictionaries representing the new cells to insert.
     ipynb_file (str): Path to the input Jupyter Notebook file.
     output_file (str): Path to the output Jupyter Notebook file.
 
@@ -695,22 +696,24 @@ def replace_cells_between_markers(value, data, markers, ipynb_file, output_file)
     """
     begin_marker, end_marker = markers
     
-    
-    for key, value in value.items():
-        
+    file_name_ipynb = output_file.split('/')[-1].strip('_temp.ipynb')
+
+    for data_ in data:
+        dict_ = data_[next(iter(data_.keys()))]
+
         replacement_cells = [
-                        {
-                            "cell_type": "code",
-                            "metadata": {},
-                            "source": [
-                                "# Run this block of code by pressing Shift + Enter to display the question\n",
-                                f"from .questions.{output_file.split("/")[-1].strip("_temp.ipynb")} import Question{value}\n",
-                                "Question1().show()\n"
-                            ],
-                            "outputs": [],
-                            "execution_count": None
-                        }
-                    ]
+            {
+                "cell_type": "code",
+                "metadata": {},
+                "source": [
+                    "# Run this block of code by pressing Shift + Enter to display the question\n",
+                    f"from questions.{file_name_ipynb} import Question{dict_['question number']}\n",
+                    f"Question{dict_['question number']}().show()\n"
+                ],
+                "outputs": [],
+                "execution_count": None
+            }
+        ]
 
         # Load the notebook data
         with open(ipynb_file, 'r', encoding='utf-8') as f:
@@ -721,32 +724,38 @@ def replace_cells_between_markers(value, data, markers, ipynb_file, output_file)
         replaced = False
 
         for cell in notebook_data['cells']:
-            if cell['cell_type'] == 'value' and not replaced:
-                # Check for BEGIN marker
-                if any(begin_marker in line for line in cell.get('source', [])):
-                    inside_markers = True
-                    # Add the replacement cells
-                    new_cells.extend(replacement_cells)
-                    replaced = True  # Ensure we only replace the first occurrence
-                    continue
+            if replaced:
+                # If replacement is done, copy all remaining cells as-is
+                new_cells.append(cell)
+                continue
 
-                # Check for END marker
-                if any(end_marker in line for line in cell.get('source', [])):
-                    inside_markers = False
-                    continue
+            # Check for BEGIN marker
+            if any(begin_marker in line for line in cell.get('source', [])):
+                inside_markers = True
+                # Add the replacement cells
+                new_cells.extend(replacement_cells)
+                replaced = True  # Ensure only the first marked block is replaced
+                continue
+
+            # Check for END marker
+            if inside_markers and any(end_marker in line for line in cell.get('source', [])):
+                inside_markers = False
+                continue
 
             # Skip cells within the marked block
             if inside_markers:
                 continue
 
-            # Add non-marked cells as is
+            # Add non-marked cells as-is
             new_cells.append(cell)
 
-        # If the replacement happened, update the notebook and continue
+        # If the replacement happened, update the notebook and write to the output file
         if replaced:
             notebook_data['cells'] = new_cells
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(notebook_data, f, indent=2)
+            
+            ipynb_file = output_file
             continue
 
 
