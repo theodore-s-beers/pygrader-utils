@@ -11,27 +11,47 @@ import re
 
 @dataclass
 class NotebookProcessor:
+    """
+    A class for processing Jupyter notebooks in a directory and its subdirectories.
+
+    Attributes:
+        root_folder (str): The root directory containing notebooks to process.
+        solutions_folder (str): The directory where processed notebooks and solutions are stored.
+        verbose (bool): Flag for verbose output to the console.
+        log (bool): Flag to enable or disable logging.
+    """
     root_folder: str
     solutions_folder: str = field(init=False)
     verbose: bool = False
     log: bool = True
 
     def __post_init__(self):
-        # Define the folder to store solutions
+        """
+        Post-initialization method for setting up the `NotebookProcessor` instance.
+
+        This method is automatically called after the instance is created. It performs the following tasks:
+            1. Creates a solutions folder within the root directory to store processed outputs.
+            2. Configures logging to capture detailed information about the processing.
+
+        Raises:
+            OSError: If the solutions folder cannot be created due to permissions or other filesystem issues.
+        """
+        # Define the folder to store solutions and ensure it exists
         self.solutions_folder = os.path.join(self.root_folder, "_solutions")
-        os.makedirs(self.solutions_folder, exist_ok=True)
-        
-        # Configure logging
+        os.makedirs(self.solutions_folder, exist_ok=True)  # Create the folder if it doesn't exist
+
+        # Configure logging to store log messages in the solutions folder
         log_file_path = os.path.join(self.solutions_folder, "notebook_processor.log")
         logging.basicConfig(
-            filename=log_file_path,  # Name of the log file
-            level=logging.INFO,  # Logging level
-            format="%(asctime)s - %(levelname)s - %(message)s"  # Log format
+            filename=log_file_path,  # Path to the log file
+            level=logging.INFO,  # Log messages at INFO level and above will be recorded
+            format="%(asctime)s - %(levelname)s - %(message)s"  # Log message format: timestamp, level, and message
         )
 
+        # Initialize a global logger for the class
         global logger
-        logger = logging.getLogger(__name__)  # Get a logger instance
-        self.logger = logger
+        logger = logging.getLogger(__name__)  # Create a logger instance specific to this module
+        self.logger = logger  # Assign the logger instance to the class for use in instance methods
 
     def process_notebooks(self):
         """
@@ -91,16 +111,56 @@ class NotebookProcessor:
                         
     def _print_and_log(self, message):
         """
-        Print a message and log it to the logger.
+        Logs a message and optionally prints it to the console.
+
+        This method is used for logging important information and optionally
+        displaying it in the console based on the `verbose` and `log` attributes.
+
+        Args:
+            message (str): The message to be logged and/or printed.
+
+        Behavior:
+            - If `self.verbose` is True, the message will be printed to the console.
+            - If `self.log` is True, the message will be logged using the class's logger.
+
+        Example:
+            self._print_and_log("Processing completed successfully.")
+
+        Raises:
+            None: This method handles exceptions internally, if any arise from logging or printing.
         """
+        
+        # Print the message to the console if verbosity is enabled
         if self.verbose:
             print(message)
-        
-        if self.log:    
+
+        # Log the message if logging is enabled
+        if self.log:
             self.logger.info(message)
 
 
     def _process_single_notebook(self, notebook_path):
+        """
+        Processes a single Jupyter notebook.
+
+        This method handles the preparation, validation, and processing of a given notebook. It:
+        1. Moves the notebook to a subfolder within the solutions folder.
+        2. Creates temporary and destination folders for autograder and student files.
+        3. Identifies and processes multiple-choice questions (MCQs).
+        4. Runs assignment-specific tasks like executing `otter assign` and cleaning notebooks.
+        5. Generates solution and question files and moves them to appropriate folders.
+
+        Args:
+            notebook_path (str): The file path to the Jupyter notebook to be processed.
+
+        Raises:
+            FileNotFoundError: If the notebook file or intermediate files are not found.
+            OSError: If there are issues creating or moving files/directories.
+            Exception: For unexpected errors during processing.
+
+        Returns:
+            None
+        """
         
         logging.info(f"Processing notebook: {notebook_path}")
         notebook_name = os.path.splitext(os.path.basename(notebook_path))[0]
