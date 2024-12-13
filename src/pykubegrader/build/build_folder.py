@@ -138,20 +138,32 @@ class NotebookProcessor:
             
             for data_key, data_value in data.items():
                 
-                data_ = {data_key: data_value}
-            
                 # Extract the first raw cells
                 raw = extract_raw_cells(temp_notebook_path)
-            
-                # Generate the solution file
-                self.generate_solution_MCQ(raw, data, output_file=solution_path)
-            
-                question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
-                generate_mcq_file(raw, data_, output_file=question_path)
-            
-                markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
                 
-                replace_cells_between_markers(raw, data, markers, temp_notebook_path, temp_notebook_path)
+                
+                
+                data[data_key]['title'] = raw['title']
+                if len(raw['points'])==1:
+                    data[data_key]['points'] = raw['points']
+                
+                # add the raw to the data dictionary
+                data[data_key]['raw'] = raw
+                
+                
+                # data_ = {data_key: data_value}
+            
+                
+            
+                # # Generate the solution file
+                # self.generate_solution_MCQ(raw, data, output_file=solution_path)
+            
+                # question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
+                # generate_mcq_file(raw, data_, output_file=question_path)
+            
+                # markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
+                
+                # replace_cells_between_markers(raw, data, markers, temp_notebook_path, temp_notebook_path)
             
         if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
             self.run_otter_assign(temp_notebook_path, os.path.join(notebook_subfolder, "dist"))
@@ -425,16 +437,16 @@ def extract_raw_cells(ipynb_file, heading="# BEGIN MULTIPLE CHOICE"):
 
 def extract_MCQ(ipynb_file):
     """
-    Extracts questions from markdown cells and organizes them as a nested dictionary,
-    including subquestion numbers.
+    Extracts multiple-choice questions from markdown cells within sections marked by
+    `# BEGIN MULTIPLE CHOICE` and `# END MULTIPLE CHOICE`.
 
     Args:
         ipynb_file (str): Path to the .ipynb file.
 
     Returns:
-        dict: A nested dictionary where the first-level key is the question name (text after ##),
-              and the value is a dictionary with keys: 'name', 'subquestion_number',
-              'question_text', 'OPTIONS', and 'solution'.
+        list: A list of dictionaries, where each dictionary corresponds to questions within
+              a section. Each dictionary contains parsed questions with details like
+              'name', 'subquestion_number', 'question_text', 'OPTIONS', and 'solution'.
     """
     try:
         # Load the notebook file
@@ -442,7 +454,8 @@ def extract_MCQ(ipynb_file):
             notebook_data = json.load(f)
 
         cells = notebook_data.get("cells", [])
-        results = {}
+        sections = []  # List to store results for each section
+        current_section = {}  # Current section being processed
         within_section = False
         subquestion_number = 0  # Counter for subquestions
 
@@ -452,12 +465,13 @@ def extract_MCQ(ipynb_file):
                 raw_content = "".join(cell.get("source", []))
                 if "# BEGIN MULTIPLE CHOICE" in raw_content:
                     within_section = True
-                    subquestion_number = (
-                        0  # Reset counter at the start of a new section
-                    )
+                    subquestion_number = 0  # Reset counter at the start of a new section
+                    current_section = {}  # Prepare a new section dictionary
                     continue
                 elif "# END MULTIPLE CHOICE" in raw_content:
                     within_section = False
+                    if current_section:
+                        sections.append(current_section)  # Save the current section
                     continue
 
             if within_section and cell.get("cell_type") == "markdown":
@@ -469,9 +483,7 @@ def extract_MCQ(ipynb_file):
                 title = title_match.group(1).strip() if title_match else None
 
                 if title:
-                    subquestion_number += (
-                        1  # Increment the subquestion number for each question
-                    )
+                    subquestion_number += 1  # Increment subquestion number for each question
 
                     # Extract question text (### heading)
                     question_text_match = re.search(
@@ -507,8 +519,8 @@ def extract_MCQ(ipynb_file):
                         solution_match.group(1).strip() if solution_match else None
                     )
 
-                    # Create nested dictionary for the question
-                    results[title] = {
+                    # Add question details to the current section
+                    current_section[title] = {
                         "name": title,
                         "subquestion_number": subquestion_number,
                         "question_text": question_text,
@@ -516,14 +528,14 @@ def extract_MCQ(ipynb_file):
                         "solution": solution,
                     }
 
-        return results
+        return sections
 
     except FileNotFoundError:
         print(f"File {ipynb_file} not found.")
-        return {}
+        return []
     except json.JSONDecodeError:
         print("Invalid JSON in notebook file.")
-        return {}
+        return []
 
 def check_for_heading(notebook_path, search_strings):
     """
