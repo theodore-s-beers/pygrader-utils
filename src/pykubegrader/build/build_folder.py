@@ -136,12 +136,11 @@ class NotebookProcessor:
             # determine the output file path
             solution_path = f"{new_notebook_path.strip('.ipynb')}_solutions.py"
             
-            for data_key, data_value in data.items():
+            # loops around the questions 
+            for _data in data:
                 
                 # Extract the first raw cells
                 raw = extract_raw_cells(temp_notebook_path)
-                
-                
                 
                 data[data_key]['title'] = raw['title']
                 if len(raw['points'])==1:
@@ -405,35 +404,71 @@ class NotebookProcessor:
         clean_notebook(notebook_path)
 
 def extract_raw_cells(ipynb_file, heading="# BEGIN MULTIPLE CHOICE"):
-        """
-        Extracts raw cells from a Jupyter Notebook file.
+    """
+    Extracts all metadata from raw cells in a Jupyter Notebook file for a specified heading.
 
-        Args:
-            ipynb_file (str): Path to the .ipynb file.
+    Args:
+        ipynb_file (str): Path to the .ipynb file.
+        heading (str): The heading to search for in raw cells.
 
-        Returns:
-            list of str: Contents of all raw cells.
-        """
-        try:
-            with open(ipynb_file, "r", encoding="utf-8") as f:
-                notebook_data = json.load(f)
+    Returns:
+        list of dict: A list of dictionaries containing extracted metadata for each heading occurrence.
+    """
+    try:
+        with open(ipynb_file, "r", encoding="utf-8") as f:
+            notebook_data = json.load(f)
 
-            # Extract raw cell content
-            raw_cells = [
-                cell["source"]
-                for cell in notebook_data.get("cells", [])
-                if cell.get("cell_type") == "raw"
-            ]
+        # Extract raw cell content
+        raw_cells = [
+            "".join(cell.get("source", []))  # Join multiline sources into a single string
+            for cell in notebook_data.get("cells", [])
+            if cell.get("cell_type") == "raw"
+        ]
 
-            # Join multiline sources into single strings
-            return _get_first_heading(["".join(cell) for cell in raw_cells])
+        # Process each raw cell to extract metadata
+        metadata_list = []
+        for raw_cell in raw_cells:
+            metadata_list.extend(_extract_metadata_from_heading(raw_cell, heading))
 
-        except FileNotFoundError:
-            print(f"File {ipynb_file} not found.")
-            return []
-        except json.JSONDecodeError:
-            print("Invalid JSON in notebook file.")
-            return []
+        return metadata_list
+
+    except FileNotFoundError:
+        print(f"File {ipynb_file} not found.")
+        return []
+    except json.JSONDecodeError:
+        print("Invalid JSON in notebook file.")
+        return []
+
+
+def _extract_metadata_from_heading(raw_cell, heading="# BEGIN MULTIPLE CHOICE"):
+    """
+    Extracts metadata for a single raw cell string each time the heading is found.
+
+    Args:
+        raw_cell (str): String containing raw cell content.
+        heading (str): The heading to identify sections.
+
+    Returns:
+        list of dict: A list of dictionaries containing extracted key-value pairs.
+    """
+    metadata_list = []
+    lines = raw_cell.split("\n")
+    current_metadata = {}
+
+    for line in lines:
+        if line.startswith(heading):
+            if current_metadata:
+                metadata_list.append(current_metadata)  # Save previous metadata
+            current_metadata = {}  # Start new metadata block
+        elif line.startswith("##") and current_metadata is not None:
+            # Extract key and value from lines
+            key, value = line[3:].split(":", 1)
+            current_metadata[key.strip()] = value.strip()
+
+    if current_metadata:  # Append the last metadata block
+        metadata_list.append(current_metadata)
+
+    return metadata_list
 
 def extract_MCQ(ipynb_file):
     """
@@ -590,28 +625,6 @@ def clean_notebook(notebook_path):
     except Exception as e:
         logger.info(f"Error cleaning notebook {notebook_path}: {e}")
         
-def _get_first_heading(raw_list, heading="# BEGIN MULTIPLE CHOICE"):
-    """
-    Converts a list of raw strings into key-value pairs for multiple-choice metadata.
-
-    Args:
-        raw_list (list of str): List containing raw strings of multiple-choice metadata.
-
-    Returns:
-        dict: Dictionary of extracted key-value pairs.
-    """
-    metadata = {}
-
-    for line in raw_list:
-        # Check if line contains heading
-        if line.startswith(heading):
-            lines = line.split("\n")
-            for item in lines:
-                if item.startswith("##"):
-                    # Extract key and value from lines
-                    key, value = item[3:].split(":", 1)
-                    metadata[key.strip()] = value.strip()
-            return metadata
 
 def ensure_imports(output_file, header_lines):
         """
