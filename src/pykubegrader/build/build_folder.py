@@ -232,10 +232,16 @@ class NotebookProcessor:
                 notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb"
             )
             self.clean_notebook(student_notebook)
-            shutil.copy(student_notebook, self.root_folder)
             NotebookProcessor.replace_temp_in_notebook(
                 student_notebook, student_notebook
             )
+            autograder_notebook = os.path.join(
+                notebook_subfolder, "dist", "autograder", f"{notebook_name}.ipynb"
+            )
+            NotebookProcessor.replace_temp_in_notebook(
+                autograder_notebook, autograder_notebook
+            )
+            shutil.copy(student_notebook, self.root_folder)
             self._print_and_log(
                 f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}"
             )
