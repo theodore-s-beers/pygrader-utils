@@ -216,7 +216,9 @@ class NotebookProcessor:
                 # Generate the solution file
                 self.generate_solution_MCQ(data, output_file=solution_path)
 
-                question_path = f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
+                question_path = (
+                    f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
+                )
 
             generate_mcq_file(data, output_file=question_path)
 
@@ -225,12 +227,12 @@ class NotebookProcessor:
             replace_cells_between_markers(
                 data, markers, temp_notebook_path, temp_notebook_path
             )
-            
+
         ### Parse the notebook for TF questions
         if self.has_assignment(temp_notebook_path, "# BEGIN TF"):
-            
+
             markers = ("# BEGIN TF", "# END TF")
-            
+
             self._print_and_log(
                 f"Notebook {temp_notebook_path} has True False questions"
             )
@@ -253,6 +255,38 @@ class NotebookProcessor:
             question_path = f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
 
             generate_tf_file(data, output_file=question_path)
+
+            replace_cells_between_markers(
+                data, markers, temp_notebook_path, temp_notebook_path
+            )
+
+        ### Parse the notebook for select_many questions
+        if self.has_assignment(temp_notebook_path, "# BEGIN SELECT MANY"):
+
+            markers = ("# BEGIN SELECT MANY", "# BEGIN SELECT MANY")
+
+            self._print_and_log(
+                f"Notebook {temp_notebook_path} has True False questions"
+            )
+
+            # Extract all the multiple choice questions
+            data = extract_SELECT_MANY(temp_notebook_path)
+
+            # determine the output file path
+            solution_path = f"{os.path.splitext(new_notebook_path)[0]}_solutions.py"
+
+            # Extract the first value cells
+            value = extract_raw_cells(temp_notebook_path, markers[0])
+
+            data = NotebookProcessor.merge_metadata(value, data)
+
+            # for data_ in data:
+            # Generate the solution file
+            self.generate_solution_MCQ(data, output_file=solution_path)
+
+            question_path = f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
+
+            generate_select_many_file(data, output_file=question_path)
 
             replace_cells_between_markers(
                 data, markers, temp_notebook_path, temp_notebook_path
@@ -395,12 +429,19 @@ class NotebookProcessor:
             # Remove 'points' from raw metadata to avoid overwriting
             raw[i].pop("points", None)
 
+            # Handle 'grade' from raw metadata
+            if "grade" in raw[i]:
+                grade_ = [raw[i]["grade"]]
+
             # Merge each question's metadata with corresponding raw metadata
             for j, (key, value) in enumerate(_data.items()):
                 # Combine raw metadata with question data
                 data[i][key] = data[i][key] | raw[i]
                 # Assign the correct point value to the question
                 data[i][key]["points"] = points_[j]
+
+                if "grade" in raw[i]:
+                    data[i][key]["grade"] = grade_[j]
 
         return data
 
@@ -474,7 +515,7 @@ class NotebookProcessor:
         """
         Generates a Python file with solutions and total points based on the input data.
         If the file already exists, it appends new solutions to the existing solution dictionary.
-        
+
         Args:
             data_list (list): A list of dictionaries containing question metadata.
             output_file (str): Path to the output Python file.
@@ -485,7 +526,55 @@ class NotebookProcessor:
 
         # If the output file exists, load the existing solutions and total_points
         if os.path.exists(output_file):
-            spec = importlib.util.spec_from_file_location("existing_module", output_file)
+            spec = importlib.util.spec_from_file_location(
+                "existing_module", output_file
+            )
+            existing_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(existing_module)  # Load the module dynamically
+
+            # Attempt to read existing solutions and total_points
+            if hasattr(existing_module, "solutions"):
+                solutions.update(existing_module.solutions)
+            if hasattr(existing_module, "total_points"):
+                total_points += existing_module.total_points
+
+        # Process new question data and update solutions and total_points
+        for question_set in data_list:
+            for key, question_data in question_set.items():
+                solution_key = f"q{question_data['question number']}-{question_data['subquestion_number']}-{key}"
+                solutions[solution_key] = question_data["solution"]
+                total_points += question_data["points"]
+
+        # Write updated total_points and solutions back to the file
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write("from typing import Any\n\n")
+            f.write(f"total_points: float = {total_points}\n\n")
+
+            f.write("solutions: dict[str, Any] = {\n")
+            for key, solution in solutions.items():
+                # For safety, we assume solutions are strings, but if not, repr would be safer
+                f.write(f'    "{key}": {repr(solution)},\n')
+            f.write("}\n")
+
+    @staticmethod
+    def generate_solution_MCQ(data_list, output_file="output.py"):
+        """
+        Generates a Python file with solutions and total points based on the input data.
+        If the file already exists, it appends new solutions to the existing solution dictionary.
+
+        Args:
+            data_list (list): A list of dictionaries containing question metadata.
+            output_file (str): Path to the output Python file.
+        """
+
+        solutions = {}
+        total_points = 0.0
+
+        # If the output file exists, load the existing solutions and total_points
+        if os.path.exists(output_file):
+            spec = importlib.util.spec_from_file_location(
+                "existing_module", output_file
+            )
             existing_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(existing_module)  # Load the module dynamically
 
@@ -688,7 +777,7 @@ def _extract_metadata_from_heading(raw_cell, heading="# BEGIN MULTIPLE CHOICE"):
     """
     metadata_list = []
     lines = raw_cell.split("\n")
-    current_metadata = {}
+    current_metadata = None
 
     for line in lines:
         if line.startswith(heading):
@@ -704,6 +793,100 @@ def _extract_metadata_from_heading(raw_cell, heading="# BEGIN MULTIPLE CHOICE"):
         metadata_list.append(current_metadata)
 
     return metadata_list
+
+
+def extract_SELECT_MANY(ipynb_file):
+    """
+    Extracts questions marked by `# BEGIN SELECT MANY` and `# END SELECT MANY` in markdown cells,
+    including all lines under the SOLUTION header until the first blank line or whitespace-only line.
+
+    Args:
+        ipynb_file (str): Path to the .ipynb file.
+
+    Returns:
+        list: A list of dictionaries, where each dictionary corresponds to questions within
+              a section. Each dictionary contains parsed questions with details like
+              'name', 'subquestion_number', 'question_text', and 'solution'.
+    """
+    try:
+        # Load the notebook file
+        with open(ipynb_file, "r", encoding="utf-8") as f:
+            notebook_data = json.load(f)
+
+        cells = notebook_data.get("cells", [])
+        sections = []  # List to store results for each section
+        current_section = {}  # Current section being processed
+        within_section = False
+        subquestion_number = 0  # Counter for subquestions
+
+        for cell in cells:
+            if cell.get("cell_type") == "raw":
+                # Check for the start and end labels in raw cells
+                raw_content = "".join(cell.get("source", []))
+                if "# BEGIN SELECT MANY" in raw_content:
+                    within_section = True
+                    subquestion_number = (
+                        0  # Reset counter at the start of a new section
+                    )
+                    current_section = {}  # Prepare a new section dictionary
+                    continue
+                elif "# END SELECT MANY" in raw_content:
+                    within_section = False
+                    if current_section:
+                        sections.append(current_section)  # Save the current section
+                    continue
+
+            if within_section and cell.get("cell_type") == "markdown":
+                # Parse markdown cell content
+                markdown_content = "".join(cell.get("source", []))
+
+                # Extract title (## heading)
+                title_match = re.search(r"^##\s*(.+)", markdown_content, re.MULTILINE)
+                title = title_match.group(1).strip() if title_match else None
+
+                if title:
+                    subquestion_number += (
+                        1  # Increment subquestion number for each question
+                    )
+
+                    # Extract question text (### heading)
+                    question_text_match = re.search(
+                        r"^###\s*\*\*(.+)\*\*", markdown_content, re.MULTILINE
+                    )
+                    question_text = (
+                        question_text_match.group(1).strip()
+                        if question_text_match
+                        else None
+                    )
+
+                    # Extract all lines under the SOLUTION header
+                    solution_start = markdown_content.find("#### SOLUTION")
+                    if solution_start != -1:
+                        solution = []
+                        lines = markdown_content[solution_start:].splitlines()
+                        for line in lines[1:]:  # Skip the "#### SOLUTION" line
+                            if line.strip():  # Non-blank line after trimming spaces
+                                solution.append(line.strip())
+                            else:
+                                break
+
+                    # Add question details to the current section
+                    current_section[title] = {
+                        "name": title,
+                        "subquestion_number": subquestion_number,
+                        "question_text": question_text,
+                        "solution": solution,
+                    }
+
+        return sections
+
+    except FileNotFoundError:
+        print(f"File {ipynb_file} not found.")
+        return []
+    except json.JSONDecodeError:
+        print("Invalid JSON in notebook file.")
+        return []
+
 
 def extract_TF(ipynb_file):
     """
@@ -793,6 +976,7 @@ def extract_TF(ipynb_file):
     except json.JSONDecodeError:
         print("Invalid JSON in notebook file.")
         return []
+
 
 def extract_MCQ(ipynb_file):
     """
@@ -1003,7 +1187,7 @@ def replace_cells_between_markers(data, markers, ipynb_file, output_file):
     """
     begin_marker, end_marker = markers
     file_name_ipynb = ipynb_file.split("/")[-1].replace("_temp.ipynb", "")
-    
+
     file_name_ipynb = sanitize_string(file_name_ipynb)
 
     # Iterate over each set of replacement data
@@ -1139,7 +1323,70 @@ def generate_mcq_file(data_dict, output_file="mc_questions.py"):
 
             f.write(f"            points={points},\n")
             f.write("        )\n")
-            
+
+
+def generate_select_many_file(data_dict, output_file="select_many_questions.py"):
+    """
+    Generates a Python file defining an MCQuestion class from a dictionary.
+
+    Args:
+        data_dict (dict): A nested dictionary containing question metadata.
+        output_file (str): The path for the output Python file.
+
+    Returns:
+        None
+    """
+
+    # Define header lines
+    header_lines = [
+        "from pykubegrader.widgets.select_many import MultiSelect, SelectMany\n",
+        "import pykubegrader.initialize\n",
+        "import panel as pn\n\n",
+        "pn.extension()\n\n",
+    ]
+
+    # Ensure header lines are present
+    existing_content = ensure_imports(output_file, header_lines)
+
+    for question_dict in data_dict:
+        with open(output_file, "a", encoding="utf-8") as f:
+            for i, (q_key, q_value) in enumerate(question_dict.items()):
+                if i == 0:
+                    # Write the MCQuestion class
+                    f.write(
+                        f"class Question{q_value['question number']}(SelectMany):\n"
+                    )
+                    f.write("    def __init__(self):\n")
+                    f.write("        super().__init__(\n")
+                    f.write(f"            title=f'{q_value['question_text']}',\n")
+                    f.write("            style=MultiSelect,\n")
+                    f.write(
+                        f"            question_number={q_value['question number']},\n"
+                    )
+                break
+
+            keys = []
+            for i, (q_key, q_value) in enumerate(question_dict.items()):
+                # Write keys
+                keys.append(f"q{q_value['subquestion_number']}-{q_value['name']}")
+
+            f.write(f"            keys={keys},\n")
+
+            descriptions = []
+            for i, (q_key, q_value) in enumerate(question_dict.items()):
+                # Write descriptions
+                descriptions.append(q_value["question_text"])
+            f.write(f"            descriptions={descriptions},\n")
+
+            points = []
+            for i, (q_key, q_value) in enumerate(question_dict.items()):
+                # Write points
+                points.append(q_value["points"])
+
+            f.write(f"            points={points},\n")
+            f.write("        )\n")
+
+
 def generate_tf_file(data_dict, output_file="tf_questions.py"):
     """
     Generates a Python file defining an MCQuestion class from a dictionary.
