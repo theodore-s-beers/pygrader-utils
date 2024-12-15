@@ -53,7 +53,7 @@ def MultiSelect(
 # TODO: add grade all or grade in parts.
 
 
-class                    (MultiSelectQuestion):
+class SelectMany(MultiSelectQuestion):
     def __init__(
         self,
         title="Select all statements which are TRUE",
