@@ -203,7 +203,7 @@ class NotebookProcessor:
             data = extract_MCQ(temp_notebook_path)
 
             # determine the output file path
-            solution_path = f"{new_notebook_path.strip('.ipynb')}_solutions.py"
+            solution_path = f"{os.path.splitext(new_notebook_path)[0]}_solutions.py"
 
             # Extract the first value cells
             value = extract_raw_cells(temp_notebook_path)
@@ -214,7 +214,7 @@ class NotebookProcessor:
                 # Generate the solution file
                 self.generate_solution_MCQ(data, output_file=solution_path)
 
-                question_path = f"{new_notebook_path.strip('.ipynb')}_questions.py"
+                question_path = f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
 
             generate_mcq_file(data, output_file=question_path)
 
@@ -246,11 +246,18 @@ class NotebookProcessor:
                 f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}"
             )
 
+        # If Otter does not run, move the student file to the main directory
+        if "student_notebook" not in locals():
+            path_ = shutil.copy(temp_notebook_path, self.root_folder)
+            self._print_and_log(
+                f"Copied and cleaned student notebook: {path_} -> {self.root_folder}"
+            )
+
         # Move the solution file to the autograder folder
         if "solution_path" in locals():
             # gets importable file name
             importable_file_name = sanitize_string(
-                os.path.basename(solution_path.strip(".py"))
+                os.path.splitext(os.path.basename(solution_path))[0]
             )
 
             # Move the solution file to the autograder folder
@@ -268,6 +275,7 @@ class NotebookProcessor:
         # Remove all postfix from filenames in dist
         NotebookProcessor.remove_postfix(autograder_path, "_solutions")
         NotebookProcessor.remove_postfix(student_path, "_questions")
+        NotebookProcessor.remove_postfix(self.root_folder, "_temp")
 
     @staticmethod
     def replace_temp_in_notebook(input_file, output_file):
@@ -401,7 +409,7 @@ class NotebookProcessor:
         """
         # Default tags if none are provided
         if not tags:
-            tags = ["# ASSIGNMENT CONFIG"]
+            tags = ["# ASSIGNMENT CONFIG", "# BEGIN MULTIPLE CHOICE"]
 
         # Use the helper function to check for the presence of any specified tag
         return check_for_heading(notebook_path, tags)
@@ -866,8 +874,8 @@ def replace_cells_between_markers(data, markers, ipynb_file, output_file):
     None: Writes the modified notebook to the output file.
     """
     begin_marker, end_marker = markers
-    file_name_ipynb = ipynb_file.split("/")[-1].strip("_temp.ipynb")
-
+    file_name_ipynb = ipynb_file.split("/")[-1].replace("_temp.ipynb", "")
+    
     file_name_ipynb = sanitize_string(file_name_ipynb)
 
     # Iterate over each set of replacement data
