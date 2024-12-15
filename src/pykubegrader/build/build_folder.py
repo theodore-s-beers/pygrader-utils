@@ -246,11 +246,11 @@ class NotebookProcessor:
 
             data = NotebookProcessor.merge_metadata(value, data)
 
-            for data_ in data:
-                # Generate the solution file
-                self.generate_solution_MCQ(data, output_file=solution_path)
+            # for data_ in data:
+            # Generate the solution file
+            self.generate_solution_MCQ(data, output_file=solution_path)
 
-                question_path = f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
+            question_path = f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
 
             generate_tf_file(data, output_file=question_path)
 

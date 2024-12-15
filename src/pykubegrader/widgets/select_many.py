@@ -50,6 +50,8 @@ def MultiSelect(
 # Question class
 #
 
+# TODO: add grade all or grade in parts.
+
 
 class SelectMany(MultiSelectQuestion):
     def __init__(
@@ -98,6 +100,7 @@ class SelectMany(MultiSelectQuestion):
             """,
         ],
         points=1,
+        grade="all",
     ):
         super().__init__(
             title=title,
