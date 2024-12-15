@@ -1384,6 +1384,12 @@ def generate_select_many_file(data_dict, output_file="select_many_questions.py")
                 points.append(q_value["points"])
 
             f.write(f"            points={points},\n")
+
+            first_key = next(iter(question_dict))
+            if "grade" in question_dict[first_key]:
+                grade = question_dict[first_key]["grade"]
+                f.write(f"            grade='{grade}',\n")
+
             f.write("        )\n")
 
 
