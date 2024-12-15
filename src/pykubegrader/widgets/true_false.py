@@ -73,12 +73,11 @@ def TrueFalse_style(
 # Question class
 #
 
-
 class TFQuestion(SelectQuestion):
 
     def __init__(
         self,
-        title="Respond with True or False",
+        title="Select if the statement is True or False",
         style=TrueFalse_style,
         question_number=2,
         keys=["MC1", "MC2", "MC3", "MC4"],
