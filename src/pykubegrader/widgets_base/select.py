@@ -4,7 +4,10 @@ import panel as pn
 
 from ..telemetry import ensure_responses, update_responses
 from ..utils import shuffle_questions
+from ..widgets.style import drexel_colors
 
+# Pass the custom CSS to Panel
+pn.extension(design="material", global_css=[drexel_colors])
 
 class SelectQuestion:
     def __init__(

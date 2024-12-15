@@ -4,35 +4,65 @@ import panel as pn
 
 from ..utils import list_of_lists
 from ..widgets_base.select import SelectQuestion
+from .style import drexel_colors, raw_css
+
+import panel as pn
+
+# Pass the custom CSS to Panel
+pn.extension(design="material", global_css=[drexel_colors], raw_css=[raw_css])
 
 #
 # Style function
 #
 
 
-def TrueFalse_style(
-    descriptions: list[str],
-    options: list[str] | list[list[str]],
-    initial_vals: list[str],
-) -> Tuple[list[pn.pane.HTML], list[pn.widgets.RadioButtonGroup]]:
-    desc_width = "350px"
+import panel as pn
+from typing import List, Tuple
 
+
+def TrueFalse_style(
+    descriptions: List[str],
+    options: List[str] | List[List[str]],
+    initial_vals: List[str],
+) -> Tuple[List[pn.pane.HTML], List[pn.widgets.RadioBoxGroup]]:
+    """
+    Creates a styled True/False question layout with descriptions and radio buttons.
+
+    Args:
+        descriptions (List[str]): List of question descriptions.
+        options (List[str] or List[List[str]]): List of options, either as a single list or list of lists.
+        initial_vals (List[str]): Initial selected values for each question.
+
+    Returns:
+        Tuple[List[pn.pane.HTML], List[pn.widgets.RadioBoxGroup]]: Styled description panes and radio button groups.
+    """
+    desc_width = "100%"  # Responsive width for descriptions
+    button_width = "100%"  # Responsive width for radio buttons
+
+    # Create description widgets
     desc_widgets = [
         pn.pane.HTML(
-            f"<div style='text-align: left; width: {desc_width};'><b>{desc}</b></div>"
+            f"""
+            <div style="text-align: left; width: {desc_width}; padding: 10px 0;">
+                <b>{desc}</b>
+            </div>
+            """,
+            sizing_mode="stretch_width",
         )
         for desc in descriptions
     ]
 
+    # Create radio button groups
     radio_buttons = [
         pn.widgets.RadioBoxGroup(
             options=option,
             value=value,
-            width=300,
+            width_policy="max",  # Automatically scales to fit content
+            sizing_mode="stretch_width",  # Make width responsive
         )
         for value, option in zip(
             initial_vals,
-            options if list_of_lists(options) else [options] * len(initial_vals),
+            options if isinstance(options[0], list) else [options] * len(initial_vals),
         )
     ]
 
@@ -52,6 +82,7 @@ class TFQuestion(SelectQuestion):
         style=TrueFalse_style,
         question_number=2,
         keys=["MC1", "MC2", "MC3", "MC4"],
+        options=None,
         descriptions=[
             "Which of the following stores key:value pairs?",
             "The following condition returns to the next iteration of the loop",
@@ -65,7 +96,7 @@ class TFQuestion(SelectQuestion):
             style=style,
             question_number=question_number,
             keys=keys,
-            options=[["True", "False"] for _ in len(keys)],
+            options=[["True", "False"] for _ in range(len(keys))],
             descriptions=descriptions,
             points=points,
         )
