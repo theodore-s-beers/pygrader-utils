@@ -4,6 +4,12 @@ import panel as pn
 
 from ..telemetry import ensure_responses, update_responses
 from ..utils import shuffle_questions
+from ..widgets.style import drexel_colors
+import time
+from IPython.display import update_display, display
+
+# Pass the custom CSS to Panel
+pn.extension(design="material", global_css=[drexel_colors])
 
 
 class SelectQuestion:
@@ -66,7 +72,19 @@ class SelectQuestion:
         for key, value in selections.items():
             update_responses(key, value)
 
-        print("Responses recorded successfully")
+        self.submit_button.name = "Responses Submitted"
+        time.sleep(1)
+        self.submit_button.name = "Submit"
+        
+        # # Display the message with a unique display_id
+        # display_id = "temp_message"
+        # display("Responses recorded successfully", display_id=display_id)
+
+        # # Wait for 1 second
+        # time.sleep(1)
+
+        # # Update the display with an empty string to clear it
+        # update_display('', display_id=display_id)
 
     def show(self):
         return self.layout

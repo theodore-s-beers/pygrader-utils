@@ -1,9 +1,17 @@
 from typing import Callable, Tuple
 
 import panel as pn
+import time
 
 from ..telemetry import ensure_responses, update_responses
 from ..utils import shuffle_questions
+from ..widgets.style import drexel_colors, raw_css
+
+# Pass the custom CSS to Panel
+pn.extension(design="material", global_css=[drexel_colors], raw_css=[raw_css])
+
+# Add the custom CSS to Panel
+pn.config.raw_css.append(raw_css)
 
 
 class MultiSelectQuestion:
@@ -50,7 +58,7 @@ class MultiSelectQuestion:
             descriptions, options, self.initial_vals
         )
 
-        self.submit_button = pn.widgets.Button(name="Submit")
+        self.submit_button = pn.widgets.Button(name="Submit", button_type="primary")
         self.submit_button.on_click(self.submit)
 
         widget_pairs = shuffle_questions(description_widgets, self.widgets, seed)
@@ -93,7 +101,9 @@ class MultiSelectQuestion:
         for key, value in zip(self.keys, responses_flat):
             update_responses(key, value)
 
-        print("Responses recorded successfully")
+        self.submit_button.name = "Responses Submitted"
+        time.sleep(1)
+        self.submit_button.name = "Submit"
 
     def show(self):
         return self.layout

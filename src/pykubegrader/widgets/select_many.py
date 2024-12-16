@@ -1,6 +1,13 @@
 import panel as pn
 
 from ..widgets_base.multi_select import MultiSelectQuestion
+from ..widgets.style import drexel_colors, raw_css
+
+# Pass the custom CSS to Panel
+pn.extension(design="material", global_css=[drexel_colors], raw_css=[raw_css])
+
+# Add the custom CSS to Panel
+pn.config.raw_css.append(raw_css)
 
 #
 # Style function
@@ -50,6 +57,8 @@ def MultiSelect(
 # Question class
 #
 
+# TODO: add grade all or grade in parts.
+
 
 class SelectMany(MultiSelectQuestion):
     def __init__(
@@ -98,6 +107,7 @@ class SelectMany(MultiSelectQuestion):
             """,
         ],
         points=1,
+        grade="all",
     ):
         super().__init__(
             title=title,
