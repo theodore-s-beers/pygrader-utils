@@ -858,6 +858,23 @@ def extract_SELECT_MANY(ipynb_file):
                         if question_text_match
                         else None
                     )
+                    
+                    # Extract OPTIONS (lines after #### options)
+                    options_match = re.search(
+                        r"####\s*options\s*(.+?)(?=####|$)",
+                        markdown_content,
+                        re.DOTALL | re.IGNORECASE,
+                    )
+                    options = (
+                        [
+                            line.strip()
+                            for line in options_match.group(1).strip().splitlines()
+                            if line.strip()
+                        ]
+                        if options_match
+                        else []
+                    )
+
 
                     # Extract all lines under the SOLUTION header
                     solution_start = markdown_content.find("#### SOLUTION")
@@ -876,6 +893,7 @@ def extract_SELECT_MANY(ipynb_file):
                         "subquestion_number": subquestion_number,
                         "question_text": question_text,
                         "solution": solution,
+                        "OPTIONS": options,
                     }
 
         return sections
@@ -1377,6 +1395,13 @@ def generate_select_many_file(data_dict, output_file="select_many_questions.py")
                 # Write descriptions
                 descriptions.append(q_value["question_text"])
             f.write(f"            descriptions={descriptions},\n")
+            
+            options = []
+            for i, (q_key, q_value) in enumerate(question_dict.items()):
+                # Write options
+                options.append(q_value["OPTIONS"])
+
+            f.write(f"            options={options},\n")
 
             points = []
             for i, (q_key, q_value) in enumerate(question_dict.items()):
