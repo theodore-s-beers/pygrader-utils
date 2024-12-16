@@ -263,7 +263,7 @@ class NotebookProcessor:
         ### Parse the notebook for select_many questions
         if self.has_assignment(temp_notebook_path, "# BEGIN SELECT MANY"):
 
-            markers = ("# BEGIN SELECT MANY", "# BEGIN SELECT MANY")
+            markers = ("# BEGIN SELECT MANY", "# END SELECT MANY")
 
             self._print_and_log(
                 f"Notebook {temp_notebook_path} has True False questions"
@@ -339,28 +339,31 @@ class NotebookProcessor:
 
         # Remove the temp copy of the notebook
         os.remove(temp_notebook_path)
-        
+
         # Remove all postfix from filenames in dist
-        autograder_path = NotebookProcessor.remove_postfix(autograder_path, "_solutions")
-        student_path = NotebookProcessor.remove_postfix(student_path, "_questions")
-        root_folder = NotebookProcessor.remove_postfix(self.root_folder, "_temp")
-        
+        NotebookProcessor.remove_postfix(autograder_path, "_solutions")
+        NotebookProcessor.remove_postfix(student_path, "_questions")
+        NotebookProcessor.remove_postfix(self.root_folder, "_temp")
+
         ### CODE TO ENSURE THAT STUDENT NOTEBOOK IS IMPORTABLE
-        
-        # Split the full path into directory and filename
-        directory, filename = os.path.split(student_path)
-        
-        # Separate the filename from its extension
-        root, ext = os.path.splitext(filename)
-        
-        # Create the new filename by appending the modifier before the extension
-        new_filename = sanitize_string(root) + ext
-        
-        # Form the new full path
-        new_full_path = os.path.join(directory, new_filename)
-        
-        # Rename the file
-        os.rename(student_path, new_full_path)
+        if "question_path" in locals():
+            
+            # question_root_path = os.path.dirname(question_path)
+            question_file_name = os.path.basename(question_path)
+            question_file_name_sanitized = sanitize_string(question_file_name.replace("_questions", ""))
+            if question_file_name_sanitized.endswith("_py"):
+                question_file_name_sanitized = question_file_name_sanitized[:-3] + ".py"
+            
+            # Rename the file
+            os.rename(os.path.join(student_path, question_file_name.replace("_questions", "")), os.path.join(student_path, question_file_name_sanitized))
+            
+            # Ensure the "questions" folder exists
+            questions_folder_jbook = os.path.join(self.root_folder, "questions")
+            os.makedirs(questions_folder_jbook, exist_ok=True)
+            
+            # Copy the renamed file to the "questions" folder
+            shutil.copy(os.path.join(student_path, question_file_name_sanitized), os.path.join(questions_folder_jbook, question_file_name_sanitized))
+
 
     @staticmethod
     def replace_temp_in_notebook(input_file, output_file):
@@ -458,7 +461,7 @@ class NotebookProcessor:
                 data[i][key]["points"] = points_[j]
 
                 if "grade" in raw[i]:
-                    data[i][key]["grade"] = grade_[j]
+                    data[i][key]["grade"] = grade_
 
         return data
 
@@ -733,8 +736,6 @@ class NotebookProcessor:
                     new_file_path = os.path.join(root, file.replace(suffix, ""))
                     os.rename(old_file_path, new_file_path)
                     logging.info(f"Renamed: {old_file_path} -> {new_file_path}")
-                    
-        return new_file_path
 
     @staticmethod
     def clean_notebook(notebook_path):
@@ -877,7 +878,7 @@ def extract_SELECT_MANY(ipynb_file):
                         if question_text_match
                         else None
                     )
-                    
+
                     # Extract OPTIONS (lines after #### options)
                     options_match = re.search(
                         r"####\s*options\s*(.+?)(?=####|$)",
@@ -893,7 +894,6 @@ def extract_SELECT_MANY(ipynb_file):
                         if options_match
                         else []
                     )
-
 
                     # Extract all lines under the SOLUTION header
                     solution_start = markdown_content.find("#### SOLUTION")
@@ -1414,7 +1414,7 @@ def generate_select_many_file(data_dict, output_file="select_many_questions.py")
                 # Write descriptions
                 descriptions.append(q_value["question_text"])
             f.write(f"            descriptions={descriptions},\n")
-            
+
             options = []
             for i, (q_key, q_value) in enumerate(question_dict.items()):
                 # Write options
