@@ -339,11 +339,28 @@ class NotebookProcessor:
 
         # Remove the temp copy of the notebook
         os.remove(temp_notebook_path)
-
+        
         # Remove all postfix from filenames in dist
-        NotebookProcessor.remove_postfix(autograder_path, "_solutions")
-        NotebookProcessor.remove_postfix(student_path, "_questions")
-        NotebookProcessor.remove_postfix(self.root_folder, "_temp")
+        autograder_path = NotebookProcessor.remove_postfix(autograder_path, "_solutions")
+        student_path = NotebookProcessor.remove_postfix(student_path, "_questions")
+        root_folder = NotebookProcessor.remove_postfix(self.root_folder, "_temp")
+        
+        ### CODE TO ENSURE THAT STUDENT NOTEBOOK IS IMPORTABLE
+        
+        # Split the full path into directory and filename
+        directory, filename = os.path.split(student_path)
+        
+        # Separate the filename from its extension
+        root, ext = os.path.splitext(filename)
+        
+        # Create the new filename by appending the modifier before the extension
+        new_filename = sanitize_string(root) + ext
+        
+        # Form the new full path
+        new_full_path = os.path.join(directory, new_filename)
+        
+        # Rename the file
+        os.rename(student_path, new_full_path)
 
     @staticmethod
     def replace_temp_in_notebook(input_file, output_file):
@@ -716,6 +733,8 @@ class NotebookProcessor:
                     new_file_path = os.path.join(root, file.replace(suffix, ""))
                     os.rename(old_file_path, new_file_path)
                     logging.info(f"Renamed: {old_file_path} -> {new_file_path}")
+                    
+        return new_file_path
 
     @staticmethod
     def clean_notebook(notebook_path):
