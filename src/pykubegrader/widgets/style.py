@@ -24,10 +24,24 @@ drexel_colors = """
     --design-surface-text-color: #07294D; /* Blue text on surface */}
 """
 
-raw_css = """.bk-input-group label {
-  color: #07294D !important; /* Change label text color */
+raw_css = """
+/* Styling for the labels */
+.bk-input-group label {
+  color: #07294D !important; /* Drexel Blue label text color */
 }
+
+/* Styling for CheckBoxGroup and RadioBoxGroup inputs */
 .bk-input-group input[type="radio"] {
-  accent-color: #07294D !important; /* Change the radio button color */
+  accent-color: #07294D !important; /* Drexel Blue accent for inputs */
+}
+
+input[type='checkbox']:checked {
+    accent-color: #07294D !important;
+}
+
+input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
 }
 """
