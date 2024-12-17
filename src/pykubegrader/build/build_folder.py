@@ -1,14 +1,15 @@
-from dataclasses import dataclass, field
+import argparse
+import importlib.util
+import json
+import logging
 import os
+import re
 import shutil
-import nbformat
 import subprocess
 import sys
-import argparse
-import logging
-import json
-import re
-import importlib.util
+from dataclasses import dataclass, field
+
+import nbformat
 
 
 @dataclass
@@ -182,11 +183,11 @@ class NotebookProcessor:
         shutil.copy(notebook_path, temp_notebook_path)
 
         # Determine the path to the autograder folder
-        autograder_path = os.path.join(notebook_subfolder, f"dist/autograder/")
+        autograder_path = os.path.join(notebook_subfolder, "dist/autograder/")
         os.makedirs(autograder_path, exist_ok=True)
 
         # Determine the path to the student folder
-        student_path = os.path.join(notebook_subfolder, f"dist/student/")
+        student_path = os.path.join(notebook_subfolder, "dist/student/")
         os.makedirs(student_path, exist_ok=True)
 
         if os.path.abspath(notebook_path) != os.path.abspath(new_notebook_path):
@@ -230,7 +231,6 @@ class NotebookProcessor:
 
         ### Parse the notebook for TF questions
         if self.has_assignment(temp_notebook_path, "# BEGIN TF"):
-
             markers = ("# BEGIN TF", "# END TF")
 
             self._print_and_log(
@@ -262,7 +262,6 @@ class NotebookProcessor:
 
         ### Parse the notebook for select_many questions
         if self.has_assignment(temp_notebook_path, "# BEGIN SELECT MANY"):
-
             markers = ("# BEGIN SELECT MANY", "# END SELECT MANY")
 
             self._print_and_log(
@@ -347,23 +346,31 @@ class NotebookProcessor:
 
         ### CODE TO ENSURE THAT STUDENT NOTEBOOK IS IMPORTABLE
         if "question_path" in locals():
-            
             # question_root_path = os.path.dirname(question_path)
             question_file_name = os.path.basename(question_path)
-            question_file_name_sanitized = sanitize_string(question_file_name.replace("_questions", ""))
+            question_file_name_sanitized = sanitize_string(
+                question_file_name.replace("_questions", "")
+            )
             if question_file_name_sanitized.endswith("_py"):
                 question_file_name_sanitized = question_file_name_sanitized[:-3] + ".py"
-            
+
             # Rename the file
-            os.rename(os.path.join(student_path, question_file_name.replace("_questions", "")), os.path.join(student_path, question_file_name_sanitized))
-            
+            os.rename(
+                os.path.join(
+                    student_path, question_file_name.replace("_questions", "")
+                ),
+                os.path.join(student_path, question_file_name_sanitized),
+            )
+
             # Ensure the "questions" folder exists
             questions_folder_jbook = os.path.join(self.root_folder, "questions")
             os.makedirs(questions_folder_jbook, exist_ok=True)
-            
-            # Copy the renamed file to the "questions" folder
-            shutil.copy(os.path.join(student_path, question_file_name_sanitized), os.path.join(questions_folder_jbook, question_file_name_sanitized))
 
+            # Copy the renamed file to the "questions" folder
+            shutil.copy(
+                os.path.join(student_path, question_file_name_sanitized),
+                os.path.join(questions_folder_jbook, question_file_name_sanitized),
+            )
 
     @staticmethod
     def replace_temp_in_notebook(input_file, output_file):
@@ -434,7 +441,7 @@ class NotebookProcessor:
             #     {"Q2": {"question_text": "What is 3+3?", "points": 3.0}}
             # ]
         """
-        merged_data = []
+        # merged_data = []
 
         # Loop through each question set in the data
         for i, _data in enumerate(data):
@@ -454,7 +461,7 @@ class NotebookProcessor:
                 grade_ = [raw[i]["grade"]]
 
             # Merge each question's metadata with corresponding raw metadata
-            for j, (key, value) in enumerate(_data.items()):
+            for j, (key, _) in enumerate(_data.items()):
                 # Combine raw metadata with question data
                 data[i][key] = data[i][key] | raw[i]
                 # Assign the correct point value to the question
@@ -529,52 +536,6 @@ class NotebookProcessor:
             logger.info(
                 f"Unexpected error during `otter assign` for {notebook_path}: {e}"
             )
-
-    @staticmethod
-    def generate_solution_MCQ(data_list, output_file="output.py"):
-        """
-        Generates a Python file with solutions and total points based on the input data.
-        If the file already exists, it appends new solutions to the existing solution dictionary.
-
-        Args:
-            data_list (list): A list of dictionaries containing question metadata.
-            output_file (str): Path to the output Python file.
-        """
-
-        solutions = {}
-        total_points = 0.0
-
-        # If the output file exists, load the existing solutions and total_points
-        if os.path.exists(output_file):
-            spec = importlib.util.spec_from_file_location(
-                "existing_module", output_file
-            )
-            existing_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(existing_module)  # Load the module dynamically
-
-            # Attempt to read existing solutions and total_points
-            if hasattr(existing_module, "solutions"):
-                solutions.update(existing_module.solutions)
-            if hasattr(existing_module, "total_points"):
-                total_points += existing_module.total_points
-
-        # Process new question data and update solutions and total_points
-        for question_set in data_list:
-            for key, question_data in question_set.items():
-                solution_key = f"q{question_data['question number']}-{question_data['subquestion_number']}-{key}"
-                solutions[solution_key] = question_data["solution"]
-                total_points += question_data["points"]
-
-        # Write updated total_points and solutions back to the file
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write("from typing import Any\n\n")
-            f.write(f"total_points: float = {total_points}\n\n")
-
-            f.write("solutions: dict[str, Any] = {\n")
-            for key, solution in solutions.items():
-                # For safety, we assume solutions are strings, but if not, repr would be safer
-                f.write(f'    "{key}": {repr(solution)},\n')
-            f.write("}\n")
 
     @staticmethod
     def generate_solution_MCQ(data_list, output_file="output.py"):
@@ -1314,7 +1275,7 @@ def generate_mcq_file(data_dict, output_file="mc_questions.py"):
     ]
 
     # Ensure header lines are present
-    existing_content = ensure_imports(output_file, header_lines)
+    _existing_content = ensure_imports(output_file, header_lines)
 
     for question_dict in data_dict:
         with open(output_file, "a", encoding="utf-8") as f:
@@ -1383,7 +1344,7 @@ def generate_select_many_file(data_dict, output_file="select_many_questions.py")
     ]
 
     # Ensure header lines are present
-    existing_content = ensure_imports(output_file, header_lines)
+    _existing_content = ensure_imports(output_file, header_lines)
 
     for question_dict in data_dict:
         with open(output_file, "a", encoding="utf-8") as f:
@@ -1458,7 +1419,7 @@ def generate_tf_file(data_dict, output_file="tf_questions.py"):
     ]
 
     # Ensure header lines are present
-    existing_content = ensure_imports(output_file, header_lines)
+    _existing_content = ensure_imports(output_file, header_lines)
 
     for question_dict in data_dict:
         with open(output_file, "a", encoding="utf-8") as f:
