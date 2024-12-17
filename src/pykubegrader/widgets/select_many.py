@@ -1,7 +1,7 @@
 import panel as pn
 
-from ..widgets_base.multi_select import MultiSelectQuestion
 from ..widgets.style import drexel_colors, raw_css
+from ..widgets_base.multi_select import MultiSelectQuestion
 
 # Pass the custom CSS to Panel
 pn.extension(design="material", global_css=[drexel_colors], raw_css=[raw_css])

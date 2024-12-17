@@ -1,5 +1,3 @@
-import panel as pn
-
 # Extend the Material Design with custom Drexel colors
 drexel_colors = """
 :root {

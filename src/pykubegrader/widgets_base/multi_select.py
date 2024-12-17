@@ -1,7 +1,7 @@
+import time
 from typing import Callable, Tuple
 
 import panel as pn
-import time
 
 from ..telemetry import ensure_responses, update_responses
 from ..utils import shuffle_questions

@@ -1,12 +1,9 @@
-from typing import Tuple
+from typing import List, Tuple
 
 import panel as pn
 
-from ..utils import list_of_lists
 from ..widgets_base.select import SelectQuestion
 from .style import drexel_colors, raw_css
-
-import panel as pn
 
 # Pass the custom CSS to Panel
 pn.extension(design="material", global_css=[drexel_colors], raw_css=[raw_css])
@@ -14,10 +11,6 @@ pn.extension(design="material", global_css=[drexel_colors], raw_css=[raw_css])
 #
 # Style function
 #
-
-
-import panel as pn
-from typing import List, Tuple
 
 
 def TrueFalse_style(
@@ -37,7 +30,7 @@ def TrueFalse_style(
         Tuple[List[pn.pane.HTML], List[pn.widgets.RadioBoxGroup]]: Styled description panes and radio button groups.
     """
     desc_width = "100%"  # Responsive width for descriptions
-    button_width = "100%"  # Responsive width for radio buttons
+    # button_width = "100%"  # Responsive width for radio buttons
 
     # Create description widgets
     desc_widgets = [
@@ -73,8 +66,8 @@ def TrueFalse_style(
 # Question class
 #
 
-class TFQuestion(SelectQuestion):
 
+class TFQuestion(SelectQuestion):
     def __init__(
         self,
         title="Select if the statement is True or False",
