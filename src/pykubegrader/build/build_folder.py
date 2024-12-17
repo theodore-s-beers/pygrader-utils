@@ -314,6 +314,8 @@ class NotebookProcessor:
                 f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}"
             )
 
+            remove_skip_execution_tag_in_place(autograder_notebook)
+
         # If Otter does not run, move the student file to the main directory
         if "student_notebook" not in locals():
             path_ = shutil.copy(temp_notebook_path, self.root_folder)
@@ -347,23 +349,32 @@ class NotebookProcessor:
 
         ### CODE TO ENSURE THAT STUDENT NOTEBOOK IS IMPORTABLE
         if "question_path" in locals():
-            
+
             # question_root_path = os.path.dirname(question_path)
             question_file_name = os.path.basename(question_path)
-            question_file_name_sanitized = sanitize_string(question_file_name.replace("_questions", ""))
+            question_file_name_sanitized = sanitize_string(
+                question_file_name.replace("_questions", "")
+            )
             if question_file_name_sanitized.endswith("_py"):
                 question_file_name_sanitized = question_file_name_sanitized[:-3] + ".py"
-            
+
             # Rename the file
-            os.rename(os.path.join(student_path, question_file_name.replace("_questions", "")), os.path.join(student_path, question_file_name_sanitized))
-            
+            os.rename(
+                os.path.join(
+                    student_path, question_file_name.replace("_questions", "")
+                ),
+                os.path.join(student_path, question_file_name_sanitized),
+            )
+
             # Ensure the "questions" folder exists
             questions_folder_jbook = os.path.join(self.root_folder, "questions")
             os.makedirs(questions_folder_jbook, exist_ok=True)
-            
-            # Copy the renamed file to the "questions" folder
-            shutil.copy(os.path.join(student_path, question_file_name_sanitized), os.path.join(questions_folder_jbook, question_file_name_sanitized))
 
+            # Copy the renamed file to the "questions" folder
+            shutil.copy(
+                os.path.join(student_path, question_file_name_sanitized),
+                os.path.join(questions_folder_jbook, question_file_name_sanitized),
+            )
 
     @staticmethod
     def replace_temp_in_notebook(input_file, output_file):
@@ -1162,7 +1173,11 @@ def clean_notebook(notebook_path):
                     cell.metadata["deletable"] = cell.metadata.get("deletable", False)
                 if cell.cell_type == "code":
                     cell.metadata["tags"] = cell.metadata.get("tags", [])
-                    if "skip-execution" not in cell.metadata["tags"]:
+                    if (
+                        "skip-execution" not in cell.metadata["tags"]
+                        and "# Run this block of code by pressing Shift + Enter to display the question"
+                        not in cell.source
+                    ):
                         cell.metadata["tags"].append("skip-execution")
 
                 cleaned_cells.append(cell)
@@ -1512,6 +1527,33 @@ def sanitize_string(input_string):
     # Replace invalid characters with underscores
     sanitized = re.sub(r"\W|^(?=\d)", "_", input_string)
     return sanitized
+
+
+def remove_skip_execution_tag_in_place(notebook_path):
+    # Load the notebook
+    with open(notebook_path, "r", encoding="utf-8") as f:
+        notebook = nbformat.read(f, as_version=nbformat.NO_CONVERT)
+
+    # Iterate through the cells
+    for cell in notebook.cells:
+        # Check if the cell contains the specific comment
+        if (
+            cell.cell_type == "code"
+            and "# Run this block of code by pressing Shift + Enter to display the question"
+            in cell.source
+        ):
+            # Check if the 'skip-execution' tag exists in the metadata
+            if "tags" in cell.metadata and "skip-execution" in cell.metadata["tags"]:
+                # Remove the 'skip-execution' tag
+                cell.metadata["tags"].remove("skip-execution")
+
+                # If no tags are left, remove the 'tags' field
+                if not cell.metadata["tags"]:
+                    del cell.metadata["tags"]
+
+    # Save the modified notebook in place
+    with open(notebook_path, "w", encoding="utf-8") as f:
+        nbformat.write(notebook, f)
 
 
 def main():
