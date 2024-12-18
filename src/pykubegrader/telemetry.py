@@ -100,7 +100,7 @@ def score_question(
     assignment: str,
     question: str,
     submission: str,
-    base_url: str = "http://localhost:8000",
+    base_url: str = "https://engr-131-api.t6e.dev/",
 ) -> Response:
     url = base_url + "/live-scorer"
 
@@ -124,7 +124,7 @@ def submit_question_new(
     question: str,
     responses: dict,
     score: dict,
-    base_url: str = "http://localhost:8000",
+    base_url: str = "https://engr-131-api.t6e.dev/",
 ):
     url = base_url + "/submit-question"
 

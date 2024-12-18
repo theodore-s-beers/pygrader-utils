@@ -18,8 +18,8 @@ def validate_logfile(
     free_response_questions=0,
     username="student",
     password="capture",
-    post_url="http://localhost:8000/upload-score",
-    login_url="http://localhost:8000/login",
+    post_url="https://engr-131-api.t6e.dev/upload-score",
+    login_url="https://engr-131-api.t6e.dev/login",
 ) -> None:
     login_data = {
         "username": username,
