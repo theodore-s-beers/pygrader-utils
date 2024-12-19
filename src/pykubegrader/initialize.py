@@ -1,4 +1,5 @@
 import json
+import os
 
 import panel as pn
 from IPython import get_ipython
@@ -16,13 +17,26 @@ def initialize_assignment(name: str) -> None:
         ipython.events.register("pre_run_cell", telemetry)
     except TypeError as e:
         print(f"Failed to register telemetry: {e}")
+        return
 
-    pn.extension()
+    jhub_user = os.getenv("JUPYTERHUB_USER")
+    if jhub_user is None:
+        print("Setup unsuccessful. Are you on JupyterHub?")
+        return
+
+    pn.extension(silent=True)
 
     try:
-        update_responses(key="assignment", value=name)
+        responses = update_responses(key="assignment", value=name)
+
+        seed = responses.get("seed")
+        if seed is None:
+            new_seed = hash(jhub_user) % 1000
+            responses = update_responses(key="seed", value=new_seed)
     except (TypeError, json.JSONDecodeError) as e:
         print(f"Failed to initialize assignment: {e}")
         return
 
     print("Assignment successfully initialized")
+    print(f"Assignment: {name}")
+    print(f"Username: {jhub_user}")
