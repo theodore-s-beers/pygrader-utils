@@ -24,18 +24,17 @@ def initialize_assignment(name: str) -> None:
         print("Setup unsuccessful. Are you on JupyterHub?")
         return
 
-    pn.extension(silent=True)
-
     try:
-        responses = update_responses(key="assignment", value=name)
+        update_responses(key="assignment", value=name)
+        update_responses(key="jhub_user", value=jhub_user)
 
-        seed = responses.get("seed")
-        if seed is None:
-            new_seed = hash(jhub_user) % 1000
-            responses = update_responses(key="seed", value=new_seed)
+        seed = hash(jhub_user) % 1000
+        update_responses(key="seed", value=seed)
     except (TypeError, json.JSONDecodeError) as e:
         print(f"Failed to initialize assignment: {e}")
         return
+
+    pn.extension(silent=True)
 
     print("Assignment successfully initialized")
     print(f"Assignment: {name}")
