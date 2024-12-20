@@ -196,27 +196,28 @@ class NotebookProcessor:
         else:
             self._print_and_log(f"Notebook already in destination: {new_notebook_path}")
 
-
-        ##### 
-        # Parsers for different types of questions
-        #####
-        self.multiple_choice_parser(temp_notebook_path, new_notebook_path)
-        self.true_false_parser(temp_notebook_path, new_notebook_path)
-        self.select_many_parser(temp_notebook_path, new_notebook_path)
-        self.free_response_parser(
+        solution_path, question_path = self.multiple_choice_parser(
+            temp_notebook_path, new_notebook_path
+        )
+        solution_path, question_path = self.true_false_parser(
+            temp_notebook_path, new_notebook_path
+        )
+        solution_path, question_path = self.select_many_parser(
+            temp_notebook_path, new_notebook_path
+        )
+        student_notebook = self.free_response_parser(
             temp_notebook_path, notebook_subfolder, notebook_name
         )
-        #######
 
         # If Otter does not run, move the student file to the main directory
-        if "student_notebook" not in locals():
+        if student_notebook is None:
             path_ = shutil.copy(temp_notebook_path, self.root_folder)
             self._print_and_log(
                 f"Copied and cleaned student notebook: {path_} -> {self.root_folder}"
             )
 
         # Move the solution file to the autograder folder
-        if "solution_path" in locals():
+        if solution_path is not None:
             # gets importable file name
             importable_file_name = sanitize_string(
                 os.path.splitext(os.path.basename(solution_path))[0]
@@ -228,7 +229,7 @@ class NotebookProcessor:
                 os.path.join(autograder_path, f"{importable_file_name}.py"),
             )
 
-        if "question_path" in locals():
+        if question_path is not None:
             shutil.move(question_path, student_path)
 
         # Remove the temp copy of the notebook
@@ -240,7 +241,7 @@ class NotebookProcessor:
         NotebookProcessor.remove_postfix(self.root_folder, "_temp")
 
         ### CODE TO ENSURE THAT STUDENT NOTEBOOK IS IMPORTABLE
-        if "question_path" in locals():
+        if question_path is not None:
             # question_root_path = os.path.dirname(question_path)
             question_file_name = os.path.basename(question_path)
             question_file_name_sanitized = sanitize_string(
@@ -267,7 +268,9 @@ class NotebookProcessor:
                 os.path.join(questions_folder_jbook, question_file_name_sanitized),
             )
 
-    def free_response_parser(self, temp_notebook_path, notebook_subfolder, notebook_name):
+    def free_response_parser(
+        self, temp_notebook_path, notebook_subfolder, notebook_name
+    ):
         if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
             self.run_otter_assign(
                 temp_notebook_path, os.path.join(notebook_subfolder, "dist")
@@ -289,6 +292,10 @@ class NotebookProcessor:
             self._print_and_log(
                 f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}"
             )
+
+            return student_notebook
+        else:
+            return None
 
     def multiple_choice_parser(self, temp_notebook_path, new_notebook_path):
 
@@ -325,6 +332,10 @@ class NotebookProcessor:
                 data, markers, temp_notebook_path, temp_notebook_path
             )
 
+            return solution_path, question_path
+        else:
+            return None, None
+
     def true_false_parser(self, temp_notebook_path, new_notebook_path):
         ### Parse the notebook for TF questions
         if self.has_assignment(temp_notebook_path, "# BEGIN TF"):
@@ -357,6 +368,10 @@ class NotebookProcessor:
                 data, markers, temp_notebook_path, temp_notebook_path
             )
 
+            return solution_path, question_path
+        else:
+            return None, None
+
     def select_many_parser(self, temp_notebook_path, new_notebook_path):
         ### Parse the notebook for select_many questions
         if self.has_assignment(temp_notebook_path, "# BEGIN SELECT MANY"):
@@ -388,6 +403,10 @@ class NotebookProcessor:
             replace_cells_between_markers(
                 data, markers, temp_notebook_path, temp_notebook_path
             )
+
+            return solution_path, question_path
+        else:
+            return None, None
 
     @staticmethod
     def replace_temp_in_notebook(input_file, output_file):
