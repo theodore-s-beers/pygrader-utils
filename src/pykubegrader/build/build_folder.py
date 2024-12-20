@@ -196,122 +196,17 @@ class NotebookProcessor:
         else:
             self._print_and_log(f"Notebook already in destination: {new_notebook_path}")
 
-        ### Parse the notebook for multiple choice questions
-        if self.has_assignment(temp_notebook_path, "# BEGIN MULTIPLE CHOICE"):
-            self._print_and_log(
-                f"Notebook {temp_notebook_path} has multiple choice questions"
-            )
 
-            # Extract all the multiple choice questions
-            data = extract_MCQ(temp_notebook_path)
-
-            # determine the output file path
-            solution_path = f"{os.path.splitext(new_notebook_path)[0]}_solutions.py"
-
-            # Extract the first value cells
-            value = extract_raw_cells(temp_notebook_path)
-
-            data = NotebookProcessor.merge_metadata(value, data)
-
-            for data_ in data:
-                # Generate the solution file
-                self.generate_solution_MCQ(data, output_file=solution_path)
-
-                question_path = (
-                    f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
-                )
-
-            generate_mcq_file(data, output_file=question_path)
-
-            markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
-
-            replace_cells_between_markers(
-                data, markers, temp_notebook_path, temp_notebook_path
-            )
-
-        ### Parse the notebook for TF questions
-        if self.has_assignment(temp_notebook_path, "# BEGIN TF"):
-            markers = ("# BEGIN TF", "# END TF")
-
-            self._print_and_log(
-                f"Notebook {temp_notebook_path} has True False questions"
-            )
-
-            # Extract all the multiple choice questions
-            data = extract_TF(temp_notebook_path)
-
-            # determine the output file path
-            solution_path = f"{os.path.splitext(new_notebook_path)[0]}_solutions.py"
-
-            # Extract the first value cells
-            value = extract_raw_cells(temp_notebook_path, markers[0])
-
-            data = NotebookProcessor.merge_metadata(value, data)
-
-            # for data_ in data:
-            # Generate the solution file
-            self.generate_solution_MCQ(data, output_file=solution_path)
-
-            question_path = f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
-
-            generate_tf_file(data, output_file=question_path)
-
-            replace_cells_between_markers(
-                data, markers, temp_notebook_path, temp_notebook_path
-            )
-
-        ### Parse the notebook for select_many questions
-        if self.has_assignment(temp_notebook_path, "# BEGIN SELECT MANY"):
-            markers = ("# BEGIN SELECT MANY", "# END SELECT MANY")
-
-            self._print_and_log(
-                f"Notebook {temp_notebook_path} has True False questions"
-            )
-
-            # Extract all the multiple choice questions
-            data = extract_SELECT_MANY(temp_notebook_path)
-
-            # determine the output file path
-            solution_path = f"{os.path.splitext(new_notebook_path)[0]}_solutions.py"
-
-            # Extract the first value cells
-            value = extract_raw_cells(temp_notebook_path, markers[0])
-
-            data = NotebookProcessor.merge_metadata(value, data)
-
-            # for data_ in data:
-            # Generate the solution file
-            self.generate_solution_MCQ(data, output_file=solution_path)
-
-            question_path = f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
-
-            generate_select_many_file(data, output_file=question_path)
-
-            replace_cells_between_markers(
-                data, markers, temp_notebook_path, temp_notebook_path
-            )
-
-        if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
-            self.run_otter_assign(
-                temp_notebook_path, os.path.join(notebook_subfolder, "dist")
-            )
-            student_notebook = os.path.join(
-                notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb"
-            )
-            self.clean_notebook(student_notebook)
-            NotebookProcessor.replace_temp_in_notebook(
-                student_notebook, student_notebook
-            )
-            autograder_notebook = os.path.join(
-                notebook_subfolder, "dist", "autograder", f"{notebook_name}.ipynb"
-            )
-            NotebookProcessor.replace_temp_in_notebook(
-                autograder_notebook, autograder_notebook
-            )
-            shutil.copy(student_notebook, self.root_folder)
-            self._print_and_log(
-                f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}"
-            )
+        ##### 
+        # Parsers for different types of questions
+        #####
+        self.multiple_choice_parser(temp_notebook_path, new_notebook_path)
+        self.true_false_parser(temp_notebook_path, new_notebook_path)
+        self.select_many_parser(temp_notebook_path, new_notebook_path)
+        self.free_response_parser(
+            temp_notebook_path, notebook_subfolder, notebook_name
+        )
+        #######
 
         # If Otter does not run, move the student file to the main directory
         if "student_notebook" not in locals():
@@ -370,6 +265,128 @@ class NotebookProcessor:
             shutil.copy(
                 os.path.join(student_path, question_file_name_sanitized),
                 os.path.join(questions_folder_jbook, question_file_name_sanitized),
+            )
+
+    def free_response_parser(self, temp_notebook_path, notebook_subfolder, notebook_name):
+        if self.has_assignment(temp_notebook_path, "# ASSIGNMENT CONFIG"):
+            self.run_otter_assign(
+                temp_notebook_path, os.path.join(notebook_subfolder, "dist")
+            )
+            student_notebook = os.path.join(
+                notebook_subfolder, "dist", "student", f"{notebook_name}.ipynb"
+            )
+            self.clean_notebook(student_notebook)
+            NotebookProcessor.replace_temp_in_notebook(
+                student_notebook, student_notebook
+            )
+            autograder_notebook = os.path.join(
+                notebook_subfolder, "dist", "autograder", f"{notebook_name}.ipynb"
+            )
+            NotebookProcessor.replace_temp_in_notebook(
+                autograder_notebook, autograder_notebook
+            )
+            shutil.copy(student_notebook, self.root_folder)
+            self._print_and_log(
+                f"Copied and cleaned student notebook: {student_notebook} -> {self.root_folder}"
+            )
+
+    def multiple_choice_parser(self, temp_notebook_path, new_notebook_path):
+
+        ### Parse the notebook for multiple choice questions
+        if self.has_assignment(temp_notebook_path, "# BEGIN MULTIPLE CHOICE"):
+            self._print_and_log(
+                f"Notebook {temp_notebook_path} has multiple choice questions"
+            )
+
+            # Extract all the multiple choice questions
+            data = extract_MCQ(temp_notebook_path)
+
+            # determine the output file path
+            solution_path = f"{os.path.splitext(new_notebook_path)[0]}_solutions.py"
+
+            # Extract the first value cells
+            value = extract_raw_cells(temp_notebook_path)
+
+            data = NotebookProcessor.merge_metadata(value, data)
+
+            for data_ in data:
+                # Generate the solution file
+                self.generate_solution_MCQ(data, output_file=solution_path)
+
+                question_path = (
+                    f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
+                )
+
+            generate_mcq_file(data, output_file=question_path)
+
+            markers = ("# BEGIN MULTIPLE CHOICE", "# END MULTIPLE CHOICE")
+
+            replace_cells_between_markers(
+                data, markers, temp_notebook_path, temp_notebook_path
+            )
+
+    def true_false_parser(self, temp_notebook_path, new_notebook_path):
+        ### Parse the notebook for TF questions
+        if self.has_assignment(temp_notebook_path, "# BEGIN TF"):
+            markers = ("# BEGIN TF", "# END TF")
+
+            self._print_and_log(
+                f"Notebook {temp_notebook_path} has True False questions"
+            )
+
+            # Extract all the multiple choice questions
+            data = extract_TF(temp_notebook_path)
+
+            # determine the output file path
+            solution_path = f"{os.path.splitext(new_notebook_path)[0]}_solutions.py"
+
+            # Extract the first value cells
+            value = extract_raw_cells(temp_notebook_path, markers[0])
+
+            data = NotebookProcessor.merge_metadata(value, data)
+
+            # for data_ in data:
+            # Generate the solution file
+            self.generate_solution_MCQ(data, output_file=solution_path)
+
+            question_path = f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
+
+            generate_tf_file(data, output_file=question_path)
+
+            replace_cells_between_markers(
+                data, markers, temp_notebook_path, temp_notebook_path
+            )
+
+    def select_many_parser(self, temp_notebook_path, new_notebook_path):
+        ### Parse the notebook for select_many questions
+        if self.has_assignment(temp_notebook_path, "# BEGIN SELECT MANY"):
+            markers = ("# BEGIN SELECT MANY", "# END SELECT MANY")
+
+            self._print_and_log(
+                f"Notebook {temp_notebook_path} has True False questions"
+            )
+
+            # Extract all the multiple choice questions
+            data = extract_SELECT_MANY(temp_notebook_path)
+
+            # determine the output file path
+            solution_path = f"{os.path.splitext(new_notebook_path)[0]}_solutions.py"
+
+            # Extract the first value cells
+            value = extract_raw_cells(temp_notebook_path, markers[0])
+
+            data = NotebookProcessor.merge_metadata(value, data)
+
+            # for data_ in data:
+            # Generate the solution file
+            self.generate_solution_MCQ(data, output_file=solution_path)
+
+            question_path = f"{new_notebook_path.replace(".ipynb", "")}_questions.py"
+
+            generate_select_many_file(data, output_file=question_path)
+
+            replace_cells_between_markers(
+                data, markers, temp_notebook_path, temp_notebook_path
             )
 
     @staticmethod
