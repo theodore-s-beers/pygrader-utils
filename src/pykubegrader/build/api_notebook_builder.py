@@ -18,7 +18,89 @@ class FastAPINotebookBuilder:
         self.import_cell = self.extract_first_cell()
         self.import_cell = self.add_imports()
 
-        self.assertion_tests = self.question_dict()
+        self.assertion_tests_dict = self.question_dict()
+
+        self.add_api_code()
+
+    def add_api_code(self):
+
+        for i, (cell_index, cell_dict) in enumerate(self.assertion_tests_dict.items()):
+            cell = self.get_cell(cell_index)
+            cell_source = FastAPINotebookBuilder.add_import_statements_to_tests(
+                cell["source"]
+            )
+
+    @staticmethod
+    def add_question_info(cell_source, cell_dict):
+        question_info = []
+
+        last_import_line_ind = FastAPINotebookBuilder.find_last_import_line(cell_source)
+        question_id = cell_dict["question"] + "-" + str(cell_dict["test_number"])
+
+        question_info.append(f'question_id = "{question_id}"')
+        question_info.append(f'max_score = {cell_dict["points"]}')
+        question_info.append(f"score = 0")
+
+        cell_source = FastAPINotebookBuilder.insert_list_at_index(
+            cell_source, question_info, last_import_line_ind + 1
+        )
+
+        return cell_source
+
+    @staticmethod
+    def insert_list_at_index(
+        original_list, insert_list, index, line_break=True, inplace_line_break=True
+    ):
+        """
+        Inserts a list into another list at a specific index.
+
+        Args:
+            original_list (list): The original list.
+            insert_list (list): The list to insert.
+            index (int): The position at which to insert the new list.
+
+        Returns:
+            list: A single combined list with the second list inserted at the specified index.
+        """
+
+        if inplace_line_break:
+            insert_list = [s + "\n" for s in insert_list]
+
+        if line_break:
+            if inplace_line_break:
+                insert_list = ["\n"] + insert_list
+            else:
+                insert_list = ["\n"] + insert_list + ["\n"]
+
+        return original_list[:index] + insert_list + original_list[index:]
+
+    @staticmethod
+    def add_import_statements_to_tests(cell_source):
+        """
+        Adds the necessary import statements to the first cell of the notebook.
+        """
+
+        end_test_config_line = "# END TEST CONFIG"
+
+        # Imports to add
+        imports = [
+            "from pygrader_utils.telemetry import (\n",
+            "    ensure_responses,\n",
+            "    log_variable,\n",
+            "    score_question,\n",
+            "    submit_question_new,\n",
+            "    telemetry,\n",
+            "    update_responses,\n",
+            ")",
+        ]
+
+        for i, line in enumerate(cell_source):
+            if end_test_config_line in line:
+                # Insert the imports immediately after the current line
+                cell_source[i + 1 : i + 1] = [
+                    "\n"
+                ] + imports  # Add a blank line for readability
+                return cell_source  # Exit the loop once the imports are inserted
 
     def add_imports(
         self, import_text="from pykubegrader.initialize import initialize_assignment"
@@ -103,6 +185,26 @@ class FastAPINotebookBuilder:
         print(f"Updated notebook saved to {output_path}")
 
     @staticmethod
+    def find_last_import_line(cell_source):
+        """
+        Finds the index of the last line with an import statement in a list of code lines.
+
+        Args:
+            cell_source (list): List of strings representing the code lines.
+
+        Returns:
+            int: The index of the last line with an import statement, or -1 if no import is found.
+        """
+        last_import_index = -1
+
+        for i, line in enumerate(cell_source):
+            # Check if the line starts with "import" or "from ... import"
+            if line.strip().startswith("import") or line.strip().startswith("from"):
+                last_import_index = i
+
+        return last_import_index
+
+    @staticmethod
     def extract_log_variables(cell):
         """Extracts log variables from the first cell."""
         if "source" in cell:
@@ -148,9 +250,12 @@ class FastAPINotebookBuilder:
 
         # Add 'is_first' and 'is_last' flags to all cells
         for question, keys in question_groups.items():
+            test_number = 1
             for i, key in enumerate(keys):
                 cells_dict[key]["is_first"] = i == 0
                 cells_dict[key]["is_last"] = i == len(keys) - 1
+                cells_dict[key]["test_number"] = test_number
+                test_number += 1
 
         return cells_dict
 
