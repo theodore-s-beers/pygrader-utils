@@ -196,18 +196,25 @@ class NotebookProcessor:
         else:
             self._print_and_log(f"Notebook already in destination: {new_notebook_path}")
 
-        solution_path, question_path = self.multiple_choice_parser(
+        
+        solution_path_1, question_path = self.multiple_choice_parser(
             temp_notebook_path, new_notebook_path
         )
-        solution_path, question_path = self.true_false_parser(
+        solution_path_2, question_path = self.true_false_parser(
             temp_notebook_path, new_notebook_path
         )
-        solution_path, question_path = self.select_many_parser(
+        solution_path_3, question_path = self.select_many_parser(
             temp_notebook_path, new_notebook_path
         )
+        
+        if any([solution_path_1, solution_path_2, solution_path_3]) is not None:
+            solution_path = solution_path_1 or solution_path_2 or solution_path_3
+        
         student_notebook = self.free_response_parser(
             temp_notebook_path, notebook_subfolder, notebook_name
         )
+        
+        
 
         # If Otter does not run, move the student file to the main directory
         if student_notebook is None:

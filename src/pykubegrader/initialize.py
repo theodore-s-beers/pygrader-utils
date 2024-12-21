@@ -4,11 +4,13 @@ from typing import Optional
 
 import panel as pn
 from IPython import get_ipython
-
+import requests
 from .telemetry import telemetry, update_responses, ensure_responses
 
 
-def initialize_assignment(name: str, verbose: Optional[bool] = False) -> None:
+def initialize_assignment(name: str, 
+                          verbose: Optional[bool] = False,
+                          url: Optional[str] = "https://engr-131-api.eastus.cloudapp.azure.com/") -> None:
     ipython = get_ipython()
     if ipython is None:
         print("Setup unsuccessful. Are you in a Jupyter environment?")
@@ -48,6 +50,17 @@ def initialize_assignment(name: str, verbose: Optional[bool] = False) -> None:
         print("Assignment successfully initialized")
         print(f"Assignment: {name}")
         print(f"Username: {jhub_user}")
+        
+
     
+    # Checks connectivity to the API
+    params = { "jhub_user": responses["jhub_user"] }
+    response = requests.get(url, params=params)
+    if verbose:
+        print(f"status code: {response.status_code}")
+        data = response.json()
+        for k, v in data.items():
+            print(f"{k}: {v}")
+        
     print("Assignment successfully initialized")
     return responses
