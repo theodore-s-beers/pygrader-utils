@@ -7,6 +7,7 @@ from IPython import get_ipython
 from .telemetry import telemetry, update_responses
 
 
+# TODO: add verbose bool flag, false by default, to enable print statements
 def initialize_assignment(name: str) -> None:
     ipython = get_ipython()
     if ipython is None:

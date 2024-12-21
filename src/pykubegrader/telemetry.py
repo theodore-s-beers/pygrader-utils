@@ -3,6 +3,7 @@ import datetime
 import json
 import logging
 import os
+from typing import Optional
 
 import nacl.public
 import requests
@@ -94,12 +95,13 @@ def update_responses(key: str, value) -> dict:
 #
 
 
+# If we instead call this with **responses
 def score_question(
     student_email: str,
-    term: str,
     assignment: str,
     question: str,
     submission: str,
+    term: str = "winter_2025",
     base_url: str = "https://engr-131-api.eastus.cloudapp.azure.com/",
 ) -> Response:
     url = base_url + "/live-scorer"
@@ -140,3 +142,14 @@ def submit_question_new(
     res = requests.post(url, json=payload, auth=HTTPBasicAuth("student", "capture"))
 
     return res
+
+
+# TODO: implement function
+def verify_server(jhub_user: Optional[str] = None):
+    pass
+
+
+# TODO: implement function; or maybe not?
+# At least improve other one
+def score_question_improved(question_name: str, responses: dict) -> dict:
+    return {}
