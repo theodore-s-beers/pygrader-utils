@@ -115,6 +115,45 @@ class FastAPINotebookBuilder:
                     return log_variables
         return []
 
+    def tag_questions(cells_dict):
+        """
+        Adds 'is_first' and 'is_last' boolean flags to the cells based on their position
+        within the group of the same question. All cells will have both flags.
+
+        Args:
+            cells_dict (dict): A dictionary where keys are cell IDs and values are cell details.
+
+        Returns:
+            dict: The modified dictionary with 'is_first' and 'is_last' flags added.
+        """
+        if not isinstance(cells_dict, dict):
+            raise ValueError("Input must be a dictionary.")
+
+        # Ensure all cells have the expected structure
+        for key, cell in cells_dict.items():
+            if not isinstance(cell, dict):
+                raise ValueError(f"Cell {key} is not a dictionary.")
+            if "question" not in cell:
+                raise KeyError(f"Cell {key} is missing the 'question' key.")
+
+        # Group the keys by question name
+        question_groups = {}
+        for key, cell in cells_dict.items():
+            question = cell.get(
+                "question"
+            )  # Use .get() to avoid errors if key is missing
+            if question not in question_groups:
+                question_groups[question] = []
+            question_groups[question].append(key)
+
+        # Add 'is_first' and 'is_last' flags to all cells
+        for question, keys in question_groups.items():
+            for i, key in enumerate(keys):
+                cells_dict[key]["is_first"] = i == 0
+                cells_dict[key]["is_last"] = i == len(keys) - 1
+
+        return cells_dict
+
     def question_dict(self):
         """
         Extracts all logical conditions from `assert` statements in Jupyter notebook cells
@@ -187,5 +226,7 @@ class FastAPINotebookBuilder:
                         "points": points_value,
                         "logging_variables": logging_variables,
                     }
+
+                    results_dict = FastAPINotebookBuilder.tag_questions(results_dict)
 
         return results_dict
